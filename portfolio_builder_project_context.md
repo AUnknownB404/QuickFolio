@@ -113,350 +113,7 @@ A portfolio should be able to switch between templates without changing its actu
 
 ---
 
-# 4. Database Structure
-
-The current database design discussed for the project is approximately:
-
-```text
-users
-portfolios
-portfolio_profiles
-
-skills
-portfolio_skills
-
-projects
-project_skills
-
-experiences
-educations
-certifications
-social_links
-
-templates
-```
-
-## 4.1 users
-
-Authentication/account information.
-
-Typical fields:
-
-```text
-id
-name
-email
-password
-email_verified_at
-created_at
-updated_at
-```
-
-Relationship:
-
-```text
-User hasMany Portfolios
-```
-
----
-
-## 4.2 portfolios
-
-The main portfolio entity.
-
-Typical fields:
-
-```text
-id
-user_id
-template_id
-title
-slug
-status
-published_at
-created_at
-updated_at
-```
-
-Possible status values:
-
-```text
-draft
-published
-```
-
-Relationships:
-
-```text
-Portfolio belongsTo User
-Portfolio belongsTo Template
-Portfolio hasOne Profile
-Portfolio belongsToMany Skills
-Portfolio hasMany Projects
-Portfolio hasMany Experiences
-Portfolio hasMany Educations
-Portfolio hasMany Certifications
-Portfolio hasMany SocialLinks
-```
-
----
-
-## 4.3 portfolio_profiles
-
-Portfolio-specific personal information.
-
-Typical fields:
-
-```text
-id
-portfolio_id
-first_name
-last_name
-headline
-about
-location
-profile_image
-resume
-phone
-created_at
-updated_at
-```
-
-Relationship:
-
-```text
-Profile belongsTo Portfolio
-```
-
----
-
-## 4.4 skills
-
-Reusable skills.
-
-Typical fields:
-
-```text
-id
-name
-slug
-created_at
-updated_at
-```
-
-Examples:
-
-```text
-Laravel
-PHP
-Vue.js
-JavaScript
-MySQL
-Docker
-Git
-```
-
----
-
-## 4.5 portfolio_skills
-
-Pivot table connecting portfolios and skills.
-
-Typical fields:
-
-```text
-id
-portfolio_id
-skill_id
-level
-sort_order
-```
-
-Relationship:
-
-```text
-Portfolio belongsToMany Skills
-Skill belongsToMany Portfolios
-```
-
----
-
-## 4.6 projects
-
-Portfolio projects.
-
-Typical fields:
-
-```text
-id
-portfolio_id
-title
-slug
-description
-image
-project_url
-github_url
-start_date
-end_date
-is_featured
-sort_order
-created_at
-updated_at
-```
-
-Relationship:
-
-```text
-Project belongsTo Portfolio
-Project belongsToMany Skills
-```
-
----
-
-## 4.7 project_skills
-
-Pivot table connecting projects and skills.
-
-Typical fields:
-
-```text
-id
-project_id
-skill_id
-```
-
----
-
-## 4.8 experiences
-
-Professional/work experience.
-
-Typical fields:
-
-```text
-id
-portfolio_id
-company
-position
-description
-location
-start_date
-end_date
-is_current
-sort_order
-created_at
-updated_at
-```
-
----
-
-## 4.9 educations
-
-Education history.
-
-Typical fields:
-
-```text
-id
-portfolio_id
-institution
-degree
-field_of_study
-description
-start_date
-end_date
-sort_order
-created_at
-updated_at
-```
-
----
-
-## 4.10 certifications
-
-Certificates and credentials.
-
-Typical fields:
-
-```text
-id
-portfolio_id
-name
-organization
-credential_id
-credential_url
-issue_date
-expiry_date
-image
-created_at
-updated_at
-```
-
----
-
-## 4.11 social_links
-
-Social/profile links.
-
-Typical fields:
-
-```text
-id
-portfolio_id
-platform
-url
-sort_order
-created_at
-updated_at
-```
-
-Examples:
-
-```text
-GitHub
-LinkedIn
-Facebook
-YouTube
-X
-```
-
----
-
-## 4.12 templates
-
-The template catalog.
-
-Typical fields:
-
-```text
-id
-name
-slug
-description
-preview_image
-thumbnail_image
-version
-is_active
-is_featured
-created_at
-updated_at
-```
-
-This table is especially important because the product is intended to support many templates.
-
-A portfolio references a template using:
-
-```text
-portfolios.template_id
-        ↓
-templates.id
-```
-
-Adding a new template should **not require changing the portfolio database schema**.
-
----
-
-# 5. Important Database Principle
+# 4. Important Database Principle
 
 Do not store the entire portfolio as one large JSON object.
 
@@ -485,7 +142,7 @@ JSON can still be used where flexibility is genuinely useful, especially for **t
 
 ---
 
-# 6. Template Architecture
+# 5. Template Architecture
 
 This is the most important architectural decision in the project.
 
@@ -523,25 +180,26 @@ The template should focus on presentation.
 
 ---
 
-# 7. Template Storage Strategy
+# 6. Template Storage Strategy
 
 A possible Laravel structure:
 
 ```text
 resources/
-    views/
-        templates/
-            minimal/
-                home.blade.php
-                components/
+    js/
+        pages/
+            templates/
+                minimal/
+                    home.vue
+                    components/
 
-            developer/
-                home.blade.php
-                components/
+                developer/
+                    home.vue
+                    components/
 
-            creative/
-                home.blade.php
-                components/
+                creative/
+                    home.vue
+                    components/
 ```
 
 However, the exact rendering implementation can evolve.
@@ -572,148 +230,7 @@ Certification
 
 ---
 
-# 8. Current Development State
-
-## Completed
-
-- Product concept defined.
-- Target users defined: non-coder users.
-- Main portfolio workflow defined.
-- SQL-first approach selected.
-- Database structure designed.
-- Template system identified as the primary product feature.
-- Separation of content and design established.
-- Laravel + Inertia + Vue.js selected as the application stack.
-
-## Current Task
-
-The next implementation phase is:
-
-> **Build the Eloquent model layer from the existing database.**
-
-The database should be treated as the current source of truth.
-
-Do not redesign the database while creating the models unless an actual relationship or implementation problem is discovered.
-
----
-
-# 9. Immediate Development Sequence
-
-The recommended next sequence is:
-
-```text
-Database
-   ↓
-Eloquent Models
-   ↓
-Model Relationships
-   ↓
-Factories
-   ↓
-Seeders
-   ↓
-Authentication
-   ↓
-Authorization / Policies
-   ↓
-Form Requests
-   ↓
-Services
-   ↓
-Controllers
-   ↓
-Inertia Pages
-   ↓
-Vue Components
-   ↓
-Portfolio CRUD
-   ↓
-Template System
-   ↓
-Preview
-   ↓
-Publishing
-   ↓
-Public Portfolio
-```
-
----
-
-# 10. Model Implementation Order
-
-Create the models in dependency order.
-
-Recommended order:
-
-```text
-User
- ↓
-Template
- ↓
-Portfolio
- ↓
-PortfolioProfile
- ↓
-Skill
- ↓
-Project
- ↓
-Experience
- ↓
-Education
- ↓
-Certification
- ↓
-SocialLink
-```
-
-Then configure the pivot relationships:
-
-```text
-Portfolio ↔ Skill
-Project ↔ Skill
-```
-
-For each model:
-
-1. Define `$fillable` or the chosen mass-assignment strategy.
-2. Define casts where required.
-3. Define relationships.
-4. Define useful scopes.
-5. Add factories.
-6. Add tests for important relationships.
-
----
-
-# 11. Example Model Relationship Map
-
-```text
-User
- └── hasMany(Portfolio)
-
-Portfolio
- ├── belongsTo(User)
- ├── belongsTo(Template)
- ├── hasOne(PortfolioProfile)
- ├── belongsToMany(Skill)
- ├── hasMany(Project)
- ├── hasMany(Experience)
- ├── hasMany(Education)
- ├── hasMany(Certification)
- └── hasMany(SocialLink)
-
-Project
- ├── belongsTo(Portfolio)
- └── belongsToMany(Skill)
-
-Skill
- ├── belongsToMany(Portfolio)
- └── belongsToMany(Project)
-```
-
----
-
-# 12. After Models: Build the Portfolio CRUD
+# 8. Build the Portfolio CRUD
 
 Do not build every feature at once.
 
@@ -765,7 +282,7 @@ This makes the application grow feature-by-feature instead of layer-by-layer.
 
 ---
 
-# 13. Recommended Inertia/Vue Structure
+# 9. Recommended Inertia/Vue Structure
 
 A possible structure:
 
@@ -807,7 +324,7 @@ The exact organization can change as the frontend grows.
 
 ---
 
-# 14. Template Marketplace / Catalog — Future
+# 10. Template Marketplace / Catalog — Future
 
 Once the core portfolio system works, build the template catalog.
 
@@ -849,7 +366,7 @@ Do not add fields just because they might be useful later. Add them when the fea
 
 ---
 
-# 15. Template Versioning — Future
+# 11. Template Versioning — Future
 
 Because templates may be updated frequently, template versioning may eventually become important.
 
@@ -870,45 +387,7 @@ For the first version, a simple `version` field may be enough.
 
 ---
 
-# 16. Customization System — Future
-
-The user should eventually be able to customize things such as:
-
-```text
-Colors
-Fonts
-Layout options
-Section visibility
-Profile image style
-Project layout
-Social icon style
-```
-
-Keep customization separate from core content.
-
-Conceptually:
-
-```text
-Portfolio Content
-        +
-Template
-        +
-Template Settings
-        ↓
-Final Portfolio
-```
-
-Do not put design settings into:
-
-```text
-projects
-skills
-experiences
-```
-
----
-
-# 17. Public Portfolio System — Future
+# 12. Public Portfolio System — Future
 
 A published portfolio should have a stable public URL.
 
@@ -936,7 +415,7 @@ Only published portfolios should be publicly accessible.
 
 ---
 
-# 18. Security / Authorization
+# 13. Security / Authorization
 
 A user must only be able to modify their own portfolio.
 
@@ -960,7 +439,7 @@ Do not rely only on frontend restrictions.
 
 ---
 
-# 19. Performance Considerations
+# 14. Performance Considerations
 
 As templates and users increase, avoid N+1 queries.
 
@@ -985,7 +464,7 @@ Do not prematurely optimize everything.
 
 ---
 
-# 20. Testing Strategy
+# 15. Testing Strategy
 
 Start testing the business-critical parts.
 
@@ -1009,7 +488,7 @@ The last two tests are especially important because the template system is a cor
 
 ---
 
-# 21. Long-Term Roadmap
+# 17. Long-Term Roadmap
 
 ## Phase 1 — Foundation
 
@@ -1017,8 +496,8 @@ The last two tests are especially important because the template system is a cor
 [x] Product concept
 [x] Technology stack
 [x] Database design
-[ ] Eloquent models
-[ ] Relationships
+[x] Eloquent models
+[x] Relationships
 [ ] Factories
 [ ] Seeders
 ```
@@ -1026,11 +505,11 @@ The last two tests are especially important because the template system is a cor
 ## Phase 2 — Authentication
 
 ```text
-[ ] Registration
-[ ] Login
-[ ] Logout
-[ ] Email verification
-[ ] Password reset
+[x] Registration
+[x] Login
+[x] Logout
+[x] Email verification
+[x] Password reset
 [ ] User dashboard
 ```
 
@@ -1101,7 +580,7 @@ Potential future features:
 
 ---
 
-# 22. Development Rule
+# 18. Development Rule
 
 For every feature, follow this loop:
 
@@ -1164,57 +643,3 @@ Complete one feature from database → Laravel → Inertia → Vue → test befo
 Do not build template marketplace, payments, analytics, custom domains, advanced customization, and versioning before the basic portfolio builder works.
 
 ---
-
-# 24. Immediate Next Task
-
-The project is now ready to move from:
-
-```text
-DATABASE DESIGN
-```
-
-to:
-
-```text
-ELOQUENT MODEL LAYER
-```
-
-The immediate implementation target is:
-
-```text
-1. User
-2. Template
-3. Portfolio
-4. PortfolioProfile
-5. Skill
-6. Project
-7. Experience
-8. Education
-9. Certification
-10. SocialLink
-11. Pivot relationships
-12. Model factories
-13. Relationship tests
-```
-
-After that, move into the first complete vertical slice:
-
-```text
-Create Portfolio
-    ↓
-Laravel validation
-    ↓
-Authorization
-    ↓
-Controller
-    ↓
-Inertia
-    ↓
-Vue form
-    ↓
-Database
-    ↓
-Test
-```
-
-This document should be treated as the current project handoff/context document. Update it as the architecture or feature scope changes.
