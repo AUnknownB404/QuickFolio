@@ -39,4 +39,19 @@ export interface User {
     updated_at: string;
 }
 
+export interface Portfolio {
+    id: number;
+    title: string;
+    slug: string;
+    status: 'draft' | 'published';
+    template_id: number | null;
+    template?: {
+        id: number;
+        name: string;
+    } | null;
+    published_at?: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
 export type BreadcrumbItemType = BreadcrumbItem;
