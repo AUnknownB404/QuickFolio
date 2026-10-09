@@ -25,7 +25,25 @@ const breadcrumbs: BreadcrumbItem[] = [
                     <h1 class="text-3xl font-semibold">{{ portfolio.title }}</h1>
                 </div>
 
-                <div class="flex items-center gap-2">
+                <div class="flex flex-wrap items-center gap-2">
+                    <Link :href="route('portfolios.social-links.index', portfolio.id)">
+                        <Button variant="outline">Social links</Button>
+                    </Link>
+                    <Link :href="route('portfolios.certifications.index', portfolio.id)">
+                        <Button variant="outline">Certifications</Button>
+                    </Link>
+                    <Link :href="route('portfolios.educations.index', portfolio.id)">
+                        <Button variant="outline">Education</Button>
+                    </Link>
+                    <Link :href="route('portfolios.experiences.index', portfolio.id)">
+                        <Button variant="outline">Experience</Button>
+                    </Link>
+                    <Link :href="route('portfolios.skills.index', portfolio.id)">
+                        <Button variant="outline">Skills</Button>
+                    </Link>
+                    <Link :href="route('portfolios.projects.index', portfolio.id)">
+                        <Button variant="outline">Projects</Button>
+                    </Link>
                     <Link :href="route('portfolios.profile.show', portfolio.id)">
                         <Button variant="outline">Profile</Button>
                     </Link>

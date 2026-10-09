@@ -516,15 +516,15 @@ The last two tests are especially important because the template system is a cor
 ## Phase 3 — Portfolio Builder
 
 ```text
-[ ] Create portfolio
-[ ] Edit portfolio
-[ ] Profile
-[ ] Skills
-[ ] Projects
-[ ] Experience
-[ ] Education
-[ ] Certifications
-[ ] Social links
+[x] Create portfolio
+[x] Edit portfolio
+[x] Profile
+[x] Skills
+[x] Projects
+[x] Experience
+[x] Education
+[x] Certifications
+[x] Social links
 ```
 
 ## Phase 4 — Template System

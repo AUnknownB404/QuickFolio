@@ -43,7 +43,7 @@ class Portfolio extends Model
 
     public function skills(): BelongsToMany
     {
-        return $this->belongsToMany(Skill::class)
+        return $this->belongsToMany(Skill::class, 'portfolio_skill', 'portfolio_id', 'skill_id')
             ->withPivot('level', 'sort_order')
             ->withTimestamps();
     }

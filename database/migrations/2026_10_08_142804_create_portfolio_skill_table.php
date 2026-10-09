@@ -8,31 +8,30 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('education', function (Blueprint $table) {
+        Schema::create('portfolio_skill', function (Blueprint $table) {
             $table->id();
 
             $table->foreignId('portfolio_id')
                 ->constrained()
                 ->cascadeOnDelete();
 
-            $table->string('institution');
-            $table->string('degree');
-            $table->string('field_of_study')->nullable();
+            $table->foreignId('skill_id')
+                ->constrained()
+                ->cascadeOnDelete();
 
-            $table->text('description')->nullable();
-
-            $table->date('start_date')->nullable();
-            $table->date('end_date')->nullable();
+            $table->unsignedTinyInteger('level')->nullable();
 
             $table->unsignedInteger('sort_order')->default(0);
 
             $table->timestamp('created_at')->useCurrent();
             $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
+
+            $table->unique(['portfolio_id', 'skill_id']);
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('education');
+        Schema::dropIfExists('portfolio_skill');
     }
 };
