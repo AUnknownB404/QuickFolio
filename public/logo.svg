@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="ring" x1="95" y1="340" x2="385" y2="130" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#17485A"/>
+      <stop offset="0.48" stop-color="#08706D"/>
+      <stop offset="1" stop-color="#28A889"/>
+    </linearGradient>
+    <linearGradient id="tail" x1="294" y1="298" x2="411" y2="420" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#087A75"/>
+      <stop offset="1" stop-color="#2BAE8C"/>
+    </linearGradient>
+    <linearGradient id="fold" x1="147" y1="337" x2="290" y2="413" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#123E51"/>
+      <stop offset="1" stop-color="#075C61"/>
+    </linearGradient>
+  </defs>
+  <!-- Custom QuickFolio Q lettermark -->
+  <path d="M256 54C144.5 54 54 144.5 54 256s90.5 202 202 202c45.8 0 88-15.3 121.9-41.1l-36.2-39.2c-23.9 16.2-53 25.7-85.7 25.7-81.4 0-147.4-66-147.4-147.4S174.6 108.6 256 108.6c81.4 0 147.4 66 147.4 147.4 0 31.5-9.9 60.7-26.7 84.6l39.1 36.2C442.1 342.7 458 301 458 256 458 144.5 367.5 54 256 54Z" fill="url(#ring)"/>
+  <!-- Inner folded sweep creates the distinctive layered letterform -->
+  <path d="M108.6 256c0-81.4 66-147.4 147.4-147.4 45.7 0 86.5 20.8 113.6 53.5-18.5-17.7-43.5-28.5-71-28.5-57.2 0-103.6 46.4-103.6 103.6 0 33.4 15.8 63.1 40.4 82.1l86.5 92.9c-20.1 12.7-43.9 20.1-69.4 20.1-81.4 0-147.4-66-147.4-147.4Z" fill="url(#fold)" opacity=".97"/>
+  <!-- Q tail, with rounded ends -->
+  <path d="M267.5 277.5c-9.2 0-13.9 10.9-7.6 17.6l115.6 123.7c5.2 5.6 12.6 8.7 20.3 8.7h41.8c15.7 0 23.9-18.7 13.2-30.2l-99.7-107.1c-7.7-8.2-18.4-12.8-29.6-12.8h-54Z" fill="url(#tail)"/>
+</svg>

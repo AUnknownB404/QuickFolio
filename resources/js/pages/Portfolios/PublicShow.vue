@@ -1,0 +1,103 @@
+<script setup lang="ts">
+import { getTemplateComponent } from '@/components/Templates/TemplateRegistry';
+import { Button } from '@/components/ui/button';
+import { Head, Link } from '@inertiajs/vue3';
+import { computed } from 'vue';
+
+interface FieldDefinition {
+    id: number;
+    field_key: string;
+    label: string;
+}
+
+interface PortfolioFieldValue {
+    field_definition_id: number;
+    value: any;
+    field_definition?: FieldDefinition;
+}
+
+interface PortfolioSection {
+    id: number;
+    section_key: string;
+    is_enabled: boolean;
+    field_values: PortfolioFieldValue[];
+}
+
+interface Portfolio {
+    id: number;
+    title: string;
+    slug: string;
+    status: string;
+    template: {
+        name: string;
+        slug: string;
+    };
+    design_settings?: Record<string, any>;
+    google_form_url: string | null;
+    google_form_name_entry: string | null;
+    google_form_email_entry: string | null;
+    google_form_message_entry: string | null;
+    sections: PortfolioSection[];
+    user: {
+        name: string;
+        email: string;
+    };
+}
+
+const props = defineProps<{
+    portfolio: Portfolio;
+}>();
+
+const portfolioContent = computed(() => {
+    const content: Record<string, Record<string, any>> = {};
+
+    props.portfolio.sections.forEach((section) => {
+        if (!section.is_enabled) return;
+
+        const sectionContent: Record<string, any> = {};
+        section.field_values.forEach((fieldValue) => {
+            const fieldKey = fieldValue.field_definition?.field_key;
+            if (fieldKey) {
+                sectionContent[fieldKey] = fieldValue.value;
+            }
+        });
+        content[section.section_key] = sectionContent;
+    });
+
+    return content;
+});
+
+</script>
+
+<template>
+    <Head :title="`${portfolio.title} — Portfolio`" />
+
+    <div class="flex min-h-screen flex-col bg-background font-sans text-foreground selection:bg-primary selection:text-primary-foreground">
+        <!-- Optional top bar if viewing your own published portfolio -->
+        <header v-if="$page.props.auth.user" class="sticky top-0 z-50 flex h-14 items-center justify-between border-b bg-card/50 px-6 backdrop-blur">
+            <span class="text-xs font-medium text-muted-foreground">Public Portfolio View</span>
+            <div class="flex items-center gap-3">
+                <Link :href="route('portfolios.edit', portfolio.id)">
+                    <Button size="sm" variant="outline">Back to Editor</Button>
+                </Link>
+            </div>
+        </header>
+
+        <!-- Dynamic Template Rendering Based on Template Slug -->
+        <main class="flex-1">
+            <component
+                :is="getTemplateComponent(portfolio.template.slug)"
+                :content="portfolioContent"
+                :design-settings="portfolio.design_settings"
+                :portfolio="portfolio"
+            />
+        </main>
+
+        <footer class="flex items-center justify-center gap-2 border-t py-8 text-center text-xs text-muted-foreground">
+            <img src="/logo.svg" alt="" class="h-5 w-5 object-contain" />
+            <span>Powered by <Link :href="route('home')" class="font-semibold text-primary hover:underline">quickFolio</Link> — Portfolio Builder & Template
+            Marketplace
+            </span>
+        </footer>
+    </div>
+</template>
