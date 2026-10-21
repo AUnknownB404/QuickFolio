@@ -8,17 +8,13 @@
         }
     },
     "routes": [
-        {
-            "src": "/build/(.*)",
-            "dest": "/public/build/$1"
-        },
-        {
-            "src": "/(.*\\.(?:css|js|png|jpg|jpeg|gif|svg|ico|ttf|woff|woff2|eot|otf|webp|avif|txt))$",
-            "dest": "/public/$1"
-        },
-        {
-            "src": "/(.*)",
-            "dest": "/api/lambda.php"
-        }
-    ]
+    {
+        "src": "/(.*\\.(?:css|js|png|jpg|jpeg|gif|svg|ico|ttf|woff|woff2|eot|otf|webp|avif|txt))$",
+        "dest": "/public/$1"
+    },
+    {
+        "src": "/(.*)",
+        "dest": "/api/lambda.php"
+    }
+]
 }
