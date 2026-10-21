@@ -1,3 +1,4 @@
+
 {
     "$schema": "https://openapi.vercel.sh/vercel.json",
     "outputDirectory": "public",
@@ -9,7 +10,7 @@
     "routes": [
         {
             "src": "/build/(.*)",
-            "dest": "/build/$1"
+            "dest": "/public/build/$1"
         },
         {
             "src": "/(.*\\.(?:css|js|png|jpg|jpeg|gif|svg|ico|ttf|woff|woff2|eot|otf|webp|avif|txt))$",
@@ -19,6 +20,5 @@
             "src": "/(.*)",
             "dest": "/api/lambda.php"
         }
-    ],
-    "buildCommand": "echo skip..."
+    ]
 }
