@@ -7,7 +7,16 @@
             "runtime": "vercel-php@0.7.4"
         }
     },
-    "routes": [
+
+"routes": [
+    {
+        "src": "/storage/(.*)",
+        "dest": "/public/storage/$1"
+    },
+    {
+        "src": "/build/(.*)",
+        "dest": "/public/build/$1"
+    },
     {
         "src": "/(.*\\.(?:css|js|png|jpg|jpeg|gif|svg|ico|ttf|woff|woff2|eot|otf|webp|avif|txt))$",
         "dest": "/public/$1"
@@ -17,4 +26,5 @@
         "dest": "/api/lambda.php"
     }
 ]
+
 }
