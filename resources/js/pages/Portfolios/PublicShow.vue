@@ -73,15 +73,6 @@ const portfolioContent = computed(() => {
     <Head :title="`${portfolio.title} — Portfolio`" />
 
     <div class="flex min-h-screen flex-col bg-background font-sans text-foreground selection:bg-primary selection:text-primary-foreground">
-        <!-- Optional top bar if viewing your own published portfolio -->
-        <header v-if="$page.props.auth.user" class="sticky top-0 z-50 flex h-14 items-center justify-between border-b bg-card/50 px-6 backdrop-blur">
-            <span class="text-xs font-medium text-muted-foreground">Public Portfolio View</span>
-            <div class="flex items-center gap-3">
-                <Link :href="route('portfolios.edit', portfolio.id)">
-                    <Button size="sm" variant="outline">Back to Editor</Button>
-                </Link>
-            </div>
-        </header>
 
         <!-- Dynamic Template Rendering Based on Template Slug -->
         <main class="flex-1">

@@ -34,7 +34,7 @@ const submit = () => {
                 class="relative hidden flex-col overflow-hidden bg-[#F4F7F7] px-12 py-12 lg:flex xl:px-16"
             >
                 <Link href="/" class="flex w-fit items-center gap-3">
-                    <img src="/storage/Logo.svg" alt="" class="h-12 w-12 shrink-0 object-contain" />
+                    <img src="/Logo.svg" alt="" class="h-12 w-12 shrink-0 object-contain" />
                     <span class="text-3xl font-bold tracking-tight text-[#0F172A]">
                         quick<span class="text-[#00695C]">Folio</span>
                     </span>
@@ -110,7 +110,7 @@ const submit = () => {
     class="pointer-events-none absolute top-64  right-0 z-0 w-[58%] max-w-[560px] translate-x-[8%] lg:bottom-12 xl:bottom-8"
 >
     <img
-        src="/storage/Mockup.png"
+        src="/Mockup.png"
         alt="Laptop and phone displaying a portfolio beside a potted plant"
         class="portfolio-float h-auto w-full object-contain drop-shadow-2xl"
     />
@@ -123,7 +123,7 @@ const submit = () => {
 
                     <!-- Mobile brand -->
                     <Link href="/" class="mb-8 flex items-center justify-center gap-2 lg:hidden">
-                        <img src="/storage/Logo.svg" alt="" class="h-10 w-10 shrink-0 object-contain" />
+                        <img src="/Logo.svg" alt="" class="h-10 w-10 shrink-0 object-contain" />
                         <span class="text-2xl font-bold tracking-tight">
                             quick<span class="text-[#00695C]">Folio</span>
                         </span>
@@ -132,7 +132,7 @@ const submit = () => {
                     <!-- Heading -->
                     <div class="mb-7">
                         <div class="mb-7 hidden items-center gap-2 lg:flex">
-                            <img src="/storage/Logo.svg" alt="" class="h-10 w-10 shrink-0 object-contain" />
+                            <img src="/Logo.svg" alt="" class="h-10 w-10 shrink-0 object-contain" />
                             <span class="text-2xl font-bold tracking-tight">
                                 quick<span class="text-[#00695C]">Folio</span>
                             </span>

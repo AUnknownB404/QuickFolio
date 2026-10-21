@@ -1,0 +1,31 @@
+quickFolio — Project Promotion Content
+
+LINKEDIN DESCRIPTION
+
+I built **quickFolio**, a web application that helps people create and publish a professional portfolio without building a website from scratch. Users can choose from ready-made templates, add and manage their content, upload images and documents, and publish a portfolio at a public link. The app also supports Google Forms contact forms and downloadable static ZIP exports.
+
+Built with **Laravel 12, PHP, Vue 3, TypeScript, Inertia.js, Tailwind CSS, and Cloudflare R2**.
+
+#WebDevelopment #Laravel #VueJS #Portfolio #FullStackDevelopment
+
+SHORT VIDEO OVERVIEW SCRIPT
+
+**Estimated length: 40–50 seconds**
+
+| Time | Visual | Voiceover |
+| --- | --- | --- |
+| 0–5 sec | Show the quickFolio home page and logo. | “Meet quickFolio, a simple way to build and publish a personal portfolio.” |
+| 5–12 sec | Browse the template marketplace and open a template preview. | “Start by exploring the available templates and choose a design that fits your style.” |
+| 12–22 sec | Show the portfolio editor, changing content and adding an image. | “Then add your content in the structured editor, customize your portfolio, and upload images or documents.” |
+| 22–31 sec | Show the portfolio preview and public portfolio page. | “When it’s ready, publish it to a public link so you can share your work.” |
+| 31–39 sec | Show contact form setup and the ZIP download action. | “You can also configure a Google Forms contact form and download a static ZIP version of your portfolio.” |
+| 39–48 sec | Show the app and technology names on screen. | “quickFolio is built with Laravel, Vue, TypeScript, and Inertia. Thanks for watching—check it out and share your feedback.” |
+
+CV PROJECT ENTRY — ATS-FRIENDLY
+
+**quickFolio | Full-Stack Portfolio Builder**  
+**Technologies:** PHP 8.2+, Laravel 12, Vue 3, TypeScript, Inertia.js, Tailwind CSS, SQLite, Cloudflare R2
+
+- Developed a full-stack portfolio-building web application with Laravel and Vue 3, enabling users to select templates, create and edit portfolio content, and publish portfolios to public URLs.
+- Implemented portfolio management features including image and document uploads, template switching, Google Forms contact form configuration, and static ZIP export.
+- Built a reusable template marketplace and administration tools, using TypeScript, Inertia.js, Tailwind CSS, and Cloudflare R2 for portfolio and template media storage.

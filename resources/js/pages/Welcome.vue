@@ -161,7 +161,7 @@ const steps = [
 
                     <div class="relative z-10 w-full">
                         <img
-                            src="/storage/Mockup.png"
+                            src="/Mockup.png"
                             alt="quickFolio portfolio preview on a laptop and phone beside a potted plant"
                             class="hero-mockup relative z-10 h-auto w-full object-contain drop-shadow-2xl"
                         />
