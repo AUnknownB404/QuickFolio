@@ -439,7 +439,16 @@ class PortfolioBuilderTest extends TestCase
         $user = User::factory()->create();
         $template = Template::published()->first();
         $portfolio = app(PortfolioService::class)->createForUser($user, $template, 'Upload Test');
-        Storage::fake('public');
+        Storage::fake('r2');
+        $r2Root = Storage::disk('r2')->path('');
+        config(['filesystems.disks.r2' => [
+            'driver' => 'local',
+            'root' => $r2Root,
+            'url' => 'https://images.example.test',
+            'throw' => true,
+            'report' => false,
+        ]]);
+        Storage::forgetDisk('r2');
 
         $file = $this->fakeImage();
 
@@ -453,12 +462,12 @@ class PortfolioBuilderTest extends TestCase
         $response->assertJsonStructure(['url', 'path', 'success']);
 
         $path = $response->json('path');
-        $this->assertSame('/storage/'.$path, $response->json('url'));
+        $this->assertSame('https://images.example.test/'.$path, $response->json('url'));
         $this->assertStringStartsWith(
             "users/{$user->id}/templates/{$template->id}/portfolios/{$portfolio->id}/",
             $path
         );
-        Storage::disk('public')->assertExists($path);
+        Storage::disk('r2')->assertExists($path);
     }
 
     public function test_user_can_upload_document_to_portfolio_storage()
@@ -467,7 +476,16 @@ class PortfolioBuilderTest extends TestCase
         $user = User::factory()->create();
         $template = Template::published()->first();
         $portfolio = app(PortfolioService::class)->createForUser($user, $template, 'Document Upload Test');
-        Storage::fake('public');
+        Storage::fake('r2');
+        $r2Root = Storage::disk('r2')->path('');
+        config(['filesystems.disks.r2' => [
+            'driver' => 'local',
+            'root' => $r2Root,
+            'url' => 'https://images.example.test',
+            'throw' => true,
+            'report' => false,
+        ]]);
+        Storage::forgetDisk('r2');
 
         $response = $this->actingAs($user)
             ->postJson(route('portfolios.upload', $portfolio), [
@@ -481,7 +499,54 @@ class PortfolioBuilderTest extends TestCase
             "users/{$user->id}/templates/{$template->id}/portfolios/{$portfolio->id}/",
             $path
         );
-        Storage::disk('public')->assertExists($path);
+        $this->assertSame('https://images.example.test/'.$path, $response->json('url'));
+        Storage::disk('r2')->assertExists($path);
+    }
+
+    public function test_portfolio_download_includes_images_from_r2()
+    {
+        $this->seed();
+        $user = User::factory()->create();
+        $template = Template::where('slug', 'dark-orange-designer')->firstOrFail();
+        $portfolio = app(PortfolioService::class)->createForUser($user, $template, 'R2 Export Test');
+        Storage::fake('r2');
+        $r2Root = Storage::disk('r2')->path('');
+        config(['filesystems.disks.r2' => [
+            'driver' => 'local',
+            'root' => $r2Root,
+            'url' => 'https://images.example.test',
+            'throw' => true,
+            'report' => false,
+        ]]);
+        Storage::forgetDisk('r2');
+
+        $assetPath = "users/{$user->id}/templates/{$template->id}/portfolios/{$portfolio->id}/r2-profile.png";
+        Storage::disk('r2')->put($assetPath, 'r2-profile-image');
+        $header = $portfolio->sections()->where('section_key', 'header')->firstOrFail();
+        PortfolioFieldValue::updateOrCreate(
+            [
+                'portfolio_section_id' => $header->id,
+                'field_definition_id' => FieldDefinition::where('field_key', 'hero_image')->firstOrFail()->id,
+            ],
+            ['value' => "https://images.example.test/{$assetPath}"]
+        );
+
+        $response = $this->actingAs($user)->get(route('portfolios.download', $portfolio));
+        $response->assertDownload("portfolio-{$portfolio->slug}.zip");
+        $archivePath = tempnam(sys_get_temp_dir(), 'portfolio_export_test_');
+        $this->assertNotFalse($archivePath);
+        file_put_contents($archivePath, $response->streamedContent());
+
+        $archive = new ZipArchive;
+        $this->assertTrue($archive->open($archivePath));
+        try {
+            $exportedImagePath = 'assets/'.substr(hash('sha256', $assetPath), 0, 12).'-r2-profile.png';
+            $this->assertStringContainsString($exportedImagePath, $archive->getFromName('index.html'));
+            $this->assertSame('r2-profile-image', $archive->getFromName($exportedImagePath));
+        } finally {
+            $archive->close();
+            unlink($archivePath);
+        }
     }
 
     public function test_portfolio_download_contains_template_files_and_local_assets()
@@ -991,6 +1056,16 @@ class PortfolioBuilderTest extends TestCase
         $template = Template::published()->first();
         $portfolio = app(PortfolioService::class)->createForUser($user, $template, 'Replace Upload Test');
         Storage::fake('public');
+        Storage::fake('r2');
+        $r2Root = Storage::disk('r2')->path('');
+        config(['filesystems.disks.r2' => [
+            'driver' => 'local',
+            'root' => $r2Root,
+            'url' => 'https://images.example.test',
+            'throw' => true,
+            'report' => false,
+        ]]);
+        Storage::forgetDisk('r2');
 
         $oldPath = "users/{$user->id}/templates/{$template->id}/portfolios/{$portfolio->id}/old-resume.pdf";
         Storage::disk('public')->put($oldPath, 'old resume');
@@ -1031,9 +1106,68 @@ class PortfolioBuilderTest extends TestCase
             ->firstOrFail()
             ->value;
         $this->assertSame($uploadResponse->json('url'), $savedValue);
-        $this->assertSame('/storage/'.$uploadResponse->json('path'), $savedValue);
+        $this->assertSame('https://images.example.test/'.$uploadResponse->json('path'), $savedValue);
         Storage::disk('public')->assertMissing($oldPath);
-        Storage::disk('public')->assertExists($uploadResponse->json('path'));
+        Storage::disk('r2')->assertExists($uploadResponse->json('path'));
+    }
+
+    public function test_replacing_an_uploaded_image_removes_the_previous_r2_object_after_saving()
+    {
+        $this->seed();
+        $user = User::factory()->create();
+        $template = Template::published()->first();
+        $portfolio = app(PortfolioService::class)->createForUser($user, $template, 'Replace Image Test');
+        Storage::fake('r2');
+        $r2Root = Storage::disk('r2')->path('');
+        config(['filesystems.disks.r2' => [
+            'driver' => 'local',
+            'root' => $r2Root,
+            'url' => 'https://images.example.test',
+            'throw' => true,
+            'report' => false,
+        ]]);
+        Storage::forgetDisk('r2');
+
+        $directory = "users/{$user->id}/templates/{$template->id}/portfolios/{$portfolio->id}";
+        $oldPath = "{$directory}/old-image.png";
+        Storage::disk('r2')->put($oldPath, 'old image');
+
+        $aboutSection = $portfolio->sections()->where('section_key', 'about')->firstOrFail();
+        $imageField = FieldDefinition::where('field_key', 'about_image')->first();
+        if (! $imageField) {
+            $imageField = FieldDefinition::where('data_type', 'image')->firstOrFail();
+        }
+        PortfolioFieldValue::updateOrCreate(
+            [
+                'portfolio_section_id' => $aboutSection->id,
+                'field_definition_id' => $imageField->id,
+            ],
+            ['value' => "https://images.example.test/{$oldPath}"]
+        );
+
+        $uploadResponse = $this->actingAs($user)->postJson(route('portfolios.upload', $portfolio), [
+            'file' => $this->fakeImage(),
+            'type' => 'image',
+        ]);
+        $uploadResponse->assertOk();
+        Storage::disk('r2')->assertExists($oldPath);
+
+        $sections = $portfolio->sections()->get()->map(fn ($section) => [
+            'id' => $section->id,
+            'is_enabled' => $section->is_enabled,
+            'field_values' => [],
+        ])->all();
+        $aboutIndex = array_search($aboutSection->id, array_column($sections, 'id'));
+        $sections[$aboutIndex]['field_values'][] = [
+            'field_definition_id' => $imageField->id,
+            'value' => $uploadResponse->json('url'),
+        ];
+
+        $this->patch(route('portfolios.update', $portfolio), ['sections' => $sections])
+            ->assertSessionHasNoErrors();
+
+        Storage::disk('r2')->assertMissing($oldPath);
+        Storage::disk('r2')->assertExists($uploadResponse->json('path'));
     }
 
     public function test_user_cannot_upload_to_another_users_portfolio()

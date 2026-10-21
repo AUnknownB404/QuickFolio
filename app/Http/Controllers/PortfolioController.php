@@ -12,9 +12,9 @@ use App\Services\PortfolioService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
 
 class PortfolioController extends Controller
 {
@@ -38,7 +38,7 @@ class PortfolioController extends Controller
 
     public function store(Request $request, Template $template)
     {
-        if (!$template->is_published) {
+        if (! $template->is_published) {
             abort(403, 'Template is not published.');
         }
 
@@ -90,7 +90,7 @@ class PortfolioController extends Controller
                 'url',
                 'max:2048',
                 function (string $attribute, mixed $value, \Closure $fail) {
-                    if ($value !== null && $value !== '' && (!is_string($value) || !GoogleFormIntegration::isValidUrl($value))) {
+                    if ($value !== null && $value !== '' && (! is_string($value) || ! GoogleFormIntegration::isValidUrl($value))) {
                         $fail('Use the full HTTPS Google Forms URL ending in /viewform.');
                     }
                 },
@@ -101,7 +101,7 @@ class PortfolioController extends Controller
         ]);
 
         if (
-            !$request->filled('google_form_url')
+            ! $request->filled('google_form_url')
             && collect(['google_form_name_entry', 'google_form_email_entry', 'google_form_message_entry'])
                 ->contains(fn (string $key) => $request->filled($key))
         ) {
@@ -150,9 +150,9 @@ class PortfolioController extends Controller
                         $value = $fvData['value'] ?? null;
 
                         if ($fieldDef) {
-                            if ($fieldDef->data_type === 'email' && !empty($value)) {
+                            if ($fieldDef->data_type === 'email' && ! empty($value)) {
                                 validator(['email' => $value], ['email' => 'email'])->validate();
-                            } elseif ($fieldDef->data_type === 'url' && !empty($value)) {
+                            } elseif ($fieldDef->data_type === 'url' && ! empty($value)) {
                                 validator(['url' => $value], ['url' => 'url'])->validate();
                             } elseif ($fieldDef->data_type === 'string' && $value !== null && $value !== '') {
                                 validator(['value' => $value], ['value' => 'string'])->validate();
@@ -174,9 +174,9 @@ class PortfolioController extends Controller
         });
 
         $currentUploadPaths = $this->portfolioUploadPaths($portfolio);
-        $unusedUploadPaths = array_diff($previousUploadPaths, $currentUploadPaths);
-        foreach ($unusedUploadPaths as $path) {
-            Storage::disk('public')->delete($path);
+        $unusedUploadPaths = array_diff_key($previousUploadPaths, $currentUploadPaths);
+        foreach ($unusedUploadPaths as $upload) {
+            Storage::disk($upload['disk'])->delete($upload['path']);
         }
 
         return redirect()->back()->with('success', 'Portfolio updated successfully.');
@@ -193,7 +193,7 @@ class PortfolioController extends Controller
             }
         }
 
-        return array_values(array_unique($paths));
+        return $paths;
     }
 
     private function collectPortfolioUploadPaths(mixed $value, string $directory, array &$paths): void
@@ -206,18 +206,42 @@ class PortfolioController extends Controller
             return;
         }
 
-        if (!is_string($value) || $value === '') {
+        if (! is_string($value) || $value === '') {
             return;
         }
 
-        $urlPath = parse_url($value, PHP_URL_PATH);
-        if (!is_string($urlPath) || !str_starts_with($urlPath, '/storage/')) {
+        $urlParts = parse_url($value);
+        $urlPath = $urlParts['path'] ?? null;
+        if (! is_string($urlPath)) {
             return;
         }
 
-        $path = substr($urlPath, strlen('/storage/'));
+        $disk = 'public';
+        if (isset($urlParts['host'])) {
+            $r2Url = parse_url((string) config('filesystems.disks.r2.url'));
+            if (isset($r2Url['host']) && strcasecmp($urlParts['host'], $r2Url['host']) === 0) {
+                $disk = 'r2';
+                $urlPath = ltrim($urlPath, '/');
+                $basePath = trim((string) ($r2Url['path'] ?? ''), '/');
+                if ($basePath !== '' && str_starts_with($urlPath, $basePath.'/')) {
+                    $urlPath = substr($urlPath, strlen($basePath) + 1);
+                }
+            } elseif (str_starts_with($urlPath, '/storage/')) {
+                $urlPath = substr($urlPath, strlen('/storage/'));
+            } else {
+                return;
+            }
+        } elseif (str_starts_with($urlPath, '/storage/')) {
+            $urlPath = substr($urlPath, strlen('/storage/'));
+        } elseif (str_starts_with($urlPath, 'storage/')) {
+            $urlPath = substr($urlPath, strlen('storage/'));
+        } else {
+            return;
+        }
+
+        $path = rawurldecode($urlPath);
         if (str_starts_with($path, $directory)) {
-            $paths[] = $path;
+            $paths[$disk.':'.$path] = ['disk' => $disk, 'path' => $path];
         }
     }
 
@@ -241,7 +265,7 @@ class PortfolioController extends Controller
         ]);
 
         $newTemplate = Template::findOrFail($validated['template_id']);
-        if (!$newTemplate->is_published) {
+        if (! $newTemplate->is_published) {
             abort(403, 'Selected template is not published.');
         }
 
@@ -263,7 +287,7 @@ class PortfolioController extends Controller
             $missingFields = [];
             foreach ($portfolio->template->sections as $tSec) {
                 $pSec = $portfolio->sections->firstWhere('section_key', $tSec->section_key);
-                if (!$pSec || !$pSec->is_enabled) {
+                if (! $pSec || ! $pSec->is_enabled) {
                     continue; // Disabled sections do not block publishing
                 }
 
@@ -278,9 +302,9 @@ class PortfolioController extends Controller
                 }
             }
 
-            if (!empty($missingFields)) {
+            if (! empty($missingFields)) {
                 return redirect()->back()->withErrors([
-                    'publish' => 'Cannot publish portfolio. Missing required fields: ' . implode(', ', $missingFields)
+                    'publish' => 'Cannot publish portfolio. Missing required fields: '.implode(', ', $missingFields),
                 ]);
             }
         }

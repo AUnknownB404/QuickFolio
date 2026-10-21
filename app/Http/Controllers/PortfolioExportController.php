@@ -46,8 +46,7 @@ class PortfolioExportController extends Controller
         }
 
         $templateSlug = $portfolio->template->slug;
-        $storageDisk = Storage::disk('public');
-        $assets = $this->collectAssets($content, $portfolio, $storageDisk);
+        $assets = $this->collectAssets($content, $portfolio);
         $brandLogoPath = base_path('storage/app/public/Logo.svg');
         if (! is_file($brandLogoPath)) {
             abort(500, 'Could not find the quickFolio logo for the portfolio export.');
@@ -112,7 +111,7 @@ class PortfolioExportController extends Controller
             }
 
             foreach ($assets as $asset) {
-                if (! $archive->addFile($asset['absolute_path'], $asset['archive_path'])) {
+                if (! $archive->addFromString($asset['archive_path'], $asset['contents'])) {
                     abort(500, 'Could not add a portfolio asset to the export archive.');
                 }
             }
@@ -2179,19 +2178,20 @@ class PortfolioExportController extends Controller
         return is_array($value) ? $value : [];
     }
 
-    private function collectAssets(array $content, Portfolio $portfolio, mixed $storageDisk): array
+    private function collectAssets(array $content, Portfolio $portfolio): array
     {
         $assets = [];
 
-        array_walk_recursive($content, function (mixed $value) use (&$assets, $storageDisk, $portfolio): void {
+        array_walk_recursive($content, function (mixed $value) use (&$assets, $portfolio): void {
             if (! is_string($value)) {
                 return;
             }
 
-            $path = $this->storagePathFromUrl($value);
-            if ($path === null) {
+            $assetLocation = $this->storagePathFromUrl($value);
+            if ($assetLocation === null) {
                 return;
             }
+            [$diskName, $path] = $assetLocation;
             $segments = explode('/', $path);
             $belongsToPortfolio = count($segments) >= 7
                 && $segments[0] === 'users'
@@ -2204,6 +2204,7 @@ class PortfolioExportController extends Controller
             if (! $belongsToPortfolio) {
                 abort(422, 'A portfolio asset referenced by this export is outside this portfolio.');
             }
+            $storageDisk = Storage::disk($diskName);
             if (! $storageDisk->exists($path)) {
                 abort(422, 'A portfolio asset referenced by this export is missing.');
             }
@@ -2212,7 +2213,7 @@ class PortfolioExportController extends Controller
             }
 
             $assets[$value] = [
-                'absolute_path' => $storageDisk->path($path),
+                'contents' => $storageDisk->get($path),
                 'archive_path' => 'assets/'.substr(hash('sha256', $path), 0, 12).'-'.basename($path),
             ];
         });
@@ -2220,14 +2221,30 @@ class PortfolioExportController extends Controller
         return $assets;
     }
 
-    private function storagePathFromUrl(string $value): ?string
+    private function storagePathFromUrl(string $value): ?array
     {
-        $path = parse_url($value, PHP_URL_PATH);
+        $urlParts = parse_url($value);
+        $path = $urlParts['path'] ?? null;
         if (! is_string($path)) {
             return null;
         }
 
-        if (str_starts_with($path, '/storage/')) {
+        $disk = 'public';
+        if (isset($urlParts['host'])) {
+            $r2Url = parse_url((string) config('filesystems.disks.r2.url'));
+            if (isset($r2Url['host']) && strcasecmp($urlParts['host'], $r2Url['host']) === 0) {
+                $disk = 'r2';
+                $path = ltrim($path, '/');
+                $basePath = trim((string) ($r2Url['path'] ?? ''), '/');
+                if ($basePath !== '' && str_starts_with($path, $basePath.'/')) {
+                    $path = substr($path, strlen($basePath) + 1);
+                }
+            } elseif (str_starts_with($path, '/storage/')) {
+                $path = substr($path, strlen('/storage/'));
+            } else {
+                return null;
+            }
+        } elseif (str_starts_with($path, '/storage/')) {
             $path = substr($path, strlen('/storage/'));
         } elseif (str_starts_with($path, 'storage/')) {
             $path = substr($path, strlen('storage/'));
@@ -2240,7 +2257,7 @@ class PortfolioExportController extends Controller
             return null;
         }
 
-        return $path;
+        return [$disk, $path];
     }
 
     private function assetUrl(mixed $value, array $assets): string

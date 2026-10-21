@@ -42,7 +42,16 @@ class AdminPanelTest extends TestCase
 
     public function test_administrators_can_create_templates_with_thumbnail_images(): void
     {
-        Storage::fake('public');
+        Storage::fake('r2');
+        $r2Root = Storage::disk('r2')->path('');
+        config(['filesystems.disks.r2' => [
+            'driver' => 'local',
+            'root' => $r2Root,
+            'url' => 'https://images.example.test',
+            'throw' => true,
+            'report' => false,
+        ]]);
+        Storage::forgetDisk('r2');
         $admin = User::factory()->create();
         $admin->role = 'admin';
         $admin->save();
@@ -66,9 +75,31 @@ class AdminPanelTest extends TestCase
         $template = Template::firstOrFail();
         $this->assertSame('editorial-portfolio', $template->slug);
         $this->assertTrue($template->is_published);
-        $this->assertStringStartsWith('/storage/templates/', $template->thumbnail);
-        $this->assertStringNotContainsString('://', $template->thumbnail);
-        Storage::disk('public')->assertExists(substr($template->thumbnail, strlen('/storage/')));
+        $this->assertStringStartsWith('https://images.example.test/templates/', $template->thumbnail);
+        $oldThumbnailPath = substr($template->thumbnail, strlen('https://images.example.test/'));
+        Storage::disk('r2')->assertExists($oldThumbnailPath);
+
+        $this->actingAs($admin)
+            ->patch(route('admin.templates.update', $template), [
+                'name' => 'Editorial Portfolio Updated',
+                'slug' => 'editorial-portfolio',
+                'category_id' => $category->id,
+                'description' => 'An updated portfolio layout.',
+                'preview_url' => '',
+                'is_published' => true,
+                'thumbnail' => UploadedFile::fake()->createWithContent(
+                    'template-updated.png',
+                    base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC')
+                ),
+            ])
+            ->assertRedirect();
+
+        Storage::disk('r2')->assertMissing($oldThumbnailPath);
+        $newThumbnailPath = substr(
+            $template->fresh()->thumbnail,
+            strlen('https://images.example.test/')
+        );
+        Storage::disk('r2')->assertExists($newThumbnailPath);
     }
 
     public function test_administrators_cannot_remove_their_own_admin_access(): void

@@ -6,7 +6,9 @@ use App\Models\Portfolio;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use RuntimeException;
 
 class UploadController extends Controller
 {
@@ -32,14 +34,19 @@ class UploadController extends Controller
         ]);
 
         $directory = "users/{$portfolio->user_id}/templates/{$portfolio->template_id}/portfolios/{$portfolio->id}";
-        $path = $request->file('file')->storePublicly($directory, 'public');
+        if (! is_string(config('filesystems.disks.r2.url')) || trim(config('filesystems.disks.r2.url')) === '') {
+            throw new RuntimeException('R2_URL must be configured before uploading files.');
+        }
+
+        $disk = 'r2';
+        $path = $request->file('file')->store($directory, $disk);
 
         if ($path === false) {
             return response()->json(['message' => 'Unable to store the uploaded file.'], 500);
         }
 
         return response()->json([
-            'url' => '/storage/'.$path,
+            'url' => Storage::disk($disk)->url($path),
             'path' => $path,
             'filename' => $request->file('file')->getClientOriginalName(),
             'success' => 'File uploaded successfully.',

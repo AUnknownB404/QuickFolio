@@ -99,13 +99,17 @@ class AdminController extends Controller
         $thumbnail = $validated['thumbnail'] ?? null;
         unset($validated['thumbnail']);
 
-        $thumbnailPath = $thumbnail?->store('templates', 'public');
+        if ($thumbnail && (! is_string(config('filesystems.disks.r2.url')) || trim(config('filesystems.disks.r2.url')) === '')) {
+            throw new RuntimeException('R2_URL must be configured before storing template thumbnails.');
+        }
+
+        $thumbnailPath = $thumbnail?->store('templates', 'r2');
         if ($thumbnail && ! is_string($thumbnailPath)) {
             throw new RuntimeException('The template thumbnail could not be stored.');
         }
 
         $validated['thumbnail'] = $thumbnailPath
-            ? '/storage/'.$thumbnailPath
+            ? Storage::disk('r2')->url($thumbnailPath)
             : null;
 
         Template::create($validated);
@@ -120,14 +124,18 @@ class AdminController extends Controller
         $thumbnail = $validated['thumbnail'] ?? null;
         unset($validated['thumbnail']);
 
-        $thumbnailPath = $thumbnail?->store('templates', 'public');
+        if ($thumbnail && (! is_string(config('filesystems.disks.r2.url')) || trim(config('filesystems.disks.r2.url')) === '')) {
+            throw new RuntimeException('R2_URL must be configured before storing template thumbnails.');
+        }
+
+        $thumbnailPath = $thumbnail?->store('templates', 'r2');
         if ($thumbnail && ! is_string($thumbnailPath)) {
             throw new RuntimeException('The template thumbnail could not be stored.');
         }
 
         if ($thumbnail) {
             $previousThumbnail = $template->thumbnail;
-            $validated['thumbnail'] = '/storage/'.$thumbnailPath;
+            $validated['thumbnail'] = Storage::disk('r2')->url($thumbnailPath);
         } else {
             $previousThumbnail = null;
         }
@@ -179,9 +187,23 @@ class AdminController extends Controller
 
         if (Str::startsWith($thumbnail, ['http://', 'https://'])) {
             $thumbnailHost = parse_url($thumbnail, PHP_URL_HOST);
-            $applicationHost = parse_url(config('app.url'), PHP_URL_HOST);
+            $r2Url = parse_url((string) config('filesystems.disks.r2.url'));
+            $r2Host = $r2Url['host'] ?? null;
 
-            if ($thumbnailHost !== $applicationHost) {
+            if ($r2Host && strcasecmp((string) $thumbnailHost, $r2Host) === 0) {
+                $path = ltrim((string) (parse_url($thumbnail, PHP_URL_PATH) ?? ''), '/');
+                $basePath = trim((string) ($r2Url['path'] ?? ''), '/');
+                if ($basePath !== '' && Str::startsWith($path, $basePath.'/')) {
+                    $path = substr($path, strlen($basePath) + 1);
+                }
+
+                Storage::disk('r2')->delete(rawurldecode($path));
+
+                return;
+            }
+
+            $applicationHost = parse_url(config('app.url'), PHP_URL_HOST);
+            if (! $applicationHost || strcasecmp((string) $thumbnailHost, $applicationHost) !== 0) {
                 return;
             }
 
