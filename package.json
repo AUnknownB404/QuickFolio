@@ -3,6 +3,7 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
+        "vercel": "npm run build && php artisan storage:link --force && mkdir -p /vercel/output/static && cp -r public/build /vercel/output/static/",
         "build:ssr": "vite build && vite build --ssr",
         "dev": "vite",
         "format": "prettier --write resources/",
