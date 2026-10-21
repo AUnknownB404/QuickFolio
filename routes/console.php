@@ -12,7 +12,7 @@ Artisan::command('admin:promote {email}', function (string $email) {
     $user = User::where('email', $email)->first();
 
     if (! $user) {
-        $this->error("No user found with email [{$email}].");
+        $this->error("No user found with email [{$email}]. Register the account first, then run this command again.");
 
         return 1;
     }
