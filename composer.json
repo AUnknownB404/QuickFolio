@@ -59,8 +59,6 @@
         "vercel": [
             "npm run build",
             "php artisan storage:link --force",
-            "mkdir -p /vercel/output/static",
-            "cp -r public/build /vercel/output/static",
             "php artisan migrate --force",
             "php artisan db:seed --force"
         ]

@@ -1,6 +1,6 @@
 {
     "$schema": "https://openapi.vercel.sh/vercel.json",
-    "outputDirectory" : "public",
+    "outputDirectory": "public",
     "functions": {
         "api/lambda.php": {
             "runtime": "vercel-php@0.7.4"
@@ -9,5 +9,5 @@
     "rewrites": [
         {"source": "/(.*)", "destination": "/api/lambda.php"}
     ],
-    "buildCommand": "echo skip..."
+    "buildCommand": "composer run vercel"
 }
