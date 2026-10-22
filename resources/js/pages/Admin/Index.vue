@@ -322,7 +322,7 @@ const runSearch = () => {
                             <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                             <input
                                 v-model="search"
-                                class="w-full rounded-lg border-slate-200 py-2 pl-9 pr-10 text-sm placeholder:text-slate-400 focus:border-emerald-700 focus:ring-emerald-700 sm:w-64"
+                                class="w-full rounded-lg border-input bg-background py-2 pl-9 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus:border-emerald-700 focus:ring-emerald-700 sm:w-64"
                                 :placeholder="activeTab === 'users' ? 'Search users' : 'Search templates'"
                             />
                             <button
@@ -364,7 +364,7 @@ const runSearch = () => {
                                     <td class="px-5 py-4">
                                         <select
                                             :value="user.role"
-                                            class="rounded-lg border-slate-200 py-1.5 pl-3 pr-8 text-xs font-semibold focus:border-emerald-700 focus:ring-emerald-700"
+                                            class="rounded-lg border-input bg-background py-1.5 pl-3 pr-8 text-xs font-semibold text-foreground focus:border-emerald-700 focus:ring-emerald-700"
                                             @change="updateRole(user, $event)"
                                         >
                                             <option value="user">User</option>
@@ -505,7 +505,7 @@ const runSearch = () => {
                                 v-model="templateForm.name"
                                 required
                                 maxlength="255"
-                                class="w-full rounded-lg border-slate-200 text-sm focus:border-emerald-700 focus:ring-emerald-700"
+                                class="w-full rounded-lg border-input bg-background text-sm text-foreground placeholder:text-muted-foreground focus:border-emerald-700 focus:ring-emerald-700"
                                 placeholder="e.g. Minimal Portfolio"
                             />
                             <p v-if="templateForm.errors.name" class="text-xs text-rose-600">{{ templateForm.errors.name }}</p>
@@ -515,7 +515,7 @@ const runSearch = () => {
                             <input
                                 v-model="templateForm.slug"
                                 maxlength="255"
-                                class="w-full rounded-lg border-slate-200 text-sm focus:border-emerald-700 focus:ring-emerald-700"
+                                class="w-full rounded-lg border-input bg-background text-sm text-foreground placeholder:text-muted-foreground focus:border-emerald-700 focus:ring-emerald-700"
                                 placeholder="generated from the name if blank"
                             />
                             <p v-if="templateForm.errors.slug" class="text-xs text-rose-600">{{ templateForm.errors.slug }}</p>
@@ -524,7 +524,7 @@ const runSearch = () => {
                             >Category
                             <select
                                 v-model="templateForm.category_id"
-                                class="w-full rounded-lg border-slate-200 text-sm focus:border-emerald-700 focus:ring-emerald-700"
+                                class="w-full rounded-lg border-input bg-background text-sm text-foreground focus:border-emerald-700 focus:ring-emerald-700"
                             >
                                 <option value="">No category</option>
                                 <option v-for="category in categories" :key="category.id" :value="category.id.toString()">{{ category.name }}</option>
@@ -536,7 +536,7 @@ const runSearch = () => {
                             <input
                                 v-model="templateForm.preview_url"
                                 type="text"
-                                class="w-full rounded-lg border-slate-200 text-sm focus:border-emerald-700 focus:ring-emerald-700"
+                                class="w-full rounded-lg border-input bg-background text-sm text-foreground placeholder:text-muted-foreground focus:border-emerald-700 focus:ring-emerald-700"
                                 placeholder="https://example.com"
                             />
                             <p v-if="templateForm.errors.preview_url" class="text-xs text-rose-600">{{ templateForm.errors.preview_url }}</p>
@@ -548,7 +548,7 @@ const runSearch = () => {
                             v-model="templateForm.description"
                             rows="3"
                             maxlength="5000"
-                            class="w-full rounded-lg border-slate-200 text-sm focus:border-emerald-700 focus:ring-emerald-700"
+                            class="w-full rounded-lg border-input bg-background text-sm text-foreground placeholder:text-muted-foreground focus:border-emerald-700 focus:ring-emerald-700"
                             placeholder="Describe what makes this template useful."
                         />
                         <p v-if="templateForm.errors.description" class="text-xs text-rose-600">{{ templateForm.errors.description }}</p>
@@ -559,7 +559,7 @@ const runSearch = () => {
                             <input
                                 type="file"
                                 accept="image/*"
-                                class="block w-full rounded-lg border border-slate-200 text-sm file:mr-3 file:border-0 file:bg-slate-50 file:px-3 file:py-2"
+                                class="block w-full rounded-lg border border-input bg-background text-sm text-foreground file:mr-3 file:border-0 file:bg-muted file:px-3 file:py-2 file:text-foreground"
                                 @change="setThumbnail"
                             />
                             <p v-if="templateForm.errors.thumbnail" class="text-xs text-rose-600">{{ templateForm.errors.thumbnail }}</p>

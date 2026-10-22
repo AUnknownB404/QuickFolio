@@ -22,7 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
-            'throttle:60,1',
+            'throttle:3,1',
         ]);
 
         $middleware->trustProxies(

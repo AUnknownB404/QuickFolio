@@ -35,7 +35,7 @@ const submit = () => {
 <template>
     <Head title="Log in" />
 
-    <main class="min-h-screen bg-white font-sans text-slate-900">
+    <main class="auth-page min-h-screen bg-white font-sans text-slate-900">
         <div class="grid min-h-screen lg:grid-cols-2">
             <!-- LEFT: BRAND PANEL -->
             <section class="relative hidden overflow-hidden z-10 bg-[#F4F7F7] px-12 py-12 lg:flex lg:flex-col xl:px-16">

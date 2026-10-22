@@ -10,6 +10,7 @@ html {
 
 @layer base {
     :root {
+        color-scheme: light;
         --background: 0 0% 100%;
         --foreground: 0 0% 3.9%;
         --card: 0 0% 100%;
@@ -46,6 +47,7 @@ html {
     }
 
     .dark {
+        color-scheme: dark;
         --background: 0 0% 3.9%;
         --foreground: 0 0% 98%;
         --card: 0 0% 3.9%;
@@ -89,4 +91,37 @@ html {
     body {
         @apply bg-background text-foreground;
     }
+
+    input,
+    select,
+    textarea {
+        color-scheme: inherit;
+    }
+}
+
+.dark .auth-page {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+}
+
+.dark .auth-page > div > section:first-child {
+    background-color: hsl(var(--muted));
+}
+
+.dark .auth-page :is(h1, h2, h3, label, .text-\[\#0F172A\]) {
+    color: hsl(var(--foreground));
+}
+
+.dark .auth-page :is(.text-slate-500, .text-slate-600, .text-slate-700) {
+    color: hsl(var(--muted-foreground));
+}
+
+.dark .auth-page input:not([type='checkbox']) {
+    border-color: hsl(var(--input));
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+}
+
+.dark .auth-page input::placeholder {
+    color: hsl(var(--muted-foreground));
 }

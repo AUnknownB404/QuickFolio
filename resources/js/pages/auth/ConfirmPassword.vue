@@ -22,7 +22,7 @@ const submit = () => {
 <template>
     <Head title="Confirm Password — quickFolio" />
 
-    <main class="min-h-screen bg-white font-sans text-[#0F172A]">
+    <main class="auth-page min-h-screen bg-white font-sans text-[#0F172A]">
         <div class="grid min-h-screen lg:grid-cols-2">
 
             <!-- LEFT SIDE -->

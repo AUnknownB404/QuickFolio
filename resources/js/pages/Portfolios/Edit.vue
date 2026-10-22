@@ -824,7 +824,7 @@ const currentSectionLabel = computed(() =>
                                                     <Label class="text-xs font-semibold text-[#64748B]">Platform / icon</Label>
                                                     <select
                                                         v-model="arrayItem.platform"
-                                                        class="h-10 w-full rounded-lg border border-[#DCE6E4] bg-white px-3 text-sm"
+                                                        class="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground"
                                                     >
                                                         <option v-for="platform in socialPlatforms" :key="platform.value" :value="platform.value">
                                                             {{ platform.label }}
@@ -1107,7 +1107,7 @@ const currentSectionLabel = computed(() =>
                     <select
                         id="template_select"
                         v-model.number="selectedTemplateId"
-                        class="h-11 w-full rounded-xl border border-[#DCE6E4] bg-white px-3 text-sm text-[#334155] outline-none transition focus:border-[#00695C] focus:ring-2 focus:ring-[#00695C]/15"
+                        class="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm text-foreground outline-none transition focus:border-[#00695C] focus:ring-2 focus:ring-[#00695C]/15"
                     >
                         <option v-for="template in availableTemplates" :key="template.id" :value="template.id">
                             {{ template.name }}<template v-if="template.category"> — {{ template.category.name }}</template>

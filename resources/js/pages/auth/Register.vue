@@ -26,7 +26,7 @@ const submit = () => {
 <template>
     <Head title="Create Account" />
 
-    <main class="min-h-screen bg-white font-sans text-slate-900">
+    <main class="auth-page min-h-screen bg-white font-sans text-slate-900">
         <div class="grid min-h-screen lg:grid-cols-2">
 
             <!-- LEFT BRAND PANEL -->
