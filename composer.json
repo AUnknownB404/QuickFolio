@@ -61,7 +61,7 @@
             "npm run build",
             "mkdir -p /vercel/output/static",
             "cp -r public/build /vercel/output/static",
-            "php artisan migrate:fresh --force",
+            "php artisan migrate --force",
             "php artisan db:seed --force"
         ]
     },
