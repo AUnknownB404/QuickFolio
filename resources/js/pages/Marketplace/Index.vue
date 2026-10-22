@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import AppLogo from '@/components/AppLogo.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
+import { LoaderCircle } from 'lucide-vue-next';
 import { ref } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,6 +63,7 @@ const selectedCategory = ref(props.filters.category || '');
 const selectedTemplate = ref<Template | null>(null);
 const portfolioTitle = ref('');
 const isUseModalOpen = ref(false);
+const isCreatingPortfolio = ref(false);
 
 const handleSearch = () => {
     router.get(
@@ -92,12 +94,18 @@ const openUseModal = (template: Template) => {
 };
 
 const createPortfolio = () => {
-    if (!selectedTemplate.value || !portfolioTitle.value.trim()) return;
+    if (isCreatingPortfolio.value || !selectedTemplate.value || !portfolioTitle.value.trim()) return;
 
+    isCreatingPortfolio.value = true;
     router.post(
         route('templates.use', { template: selectedTemplate.value.slug }),
         {
             title: portfolioTitle.value.trim(),
+        },
+        {
+            onFinish: () => {
+                isCreatingPortfolio.value = false;
+            },
         },
     );
 };
@@ -593,6 +601,7 @@ const createPortfolio = () => {
                         <Button
                             type="button"
                             variant="outline"
+                            :disabled="isCreatingPortfolio"
                             class="rounded-xl border-[#DCE5E5] bg-white"
                             @click="isUseModalOpen = false"
                         >
@@ -601,11 +610,12 @@ const createPortfolio = () => {
 
                         <Button
                             type="submit"
-                            :disabled="!portfolioTitle.trim()"
-                            class="rounded-xl bg-[#00695C] font-semibold text-white hover:bg-[#00574D]"
+                            :disabled="isCreatingPortfolio || !portfolioTitle.trim()"
+                            class="rounded-xl bg-[#00695C] font-semibold text-white hover:bg-[#00574D] disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                            Create portfolio
-                            <span class="ml-1.5" aria-hidden="true">→</span>
+                            <LoaderCircle v-if="isCreatingPortfolio" class="mr-1.5 h-4 w-4 animate-spin" aria-hidden="true" />
+                            {{ isCreatingPortfolio ? 'Creating portfolio…' : 'Create portfolio' }}
+                            <span v-if="!isCreatingPortfolio" class="ml-1.5" aria-hidden="true">→</span>
                         </Button>
                     </DialogFooter>
                 </form>

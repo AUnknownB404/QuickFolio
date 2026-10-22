@@ -1,9 +1,10 @@
 ```vue
 <script setup lang="ts">
 import AppLogo from '@/components/AppLogo.vue';
-import { computed } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import { getTemplateComponent } from '@/components/Templates/TemplateRegistry';
+import { LoaderCircle } from 'lucide-vue-next';
+import { computed, ref } from 'vue';
 
 interface Template {
     id: number;
@@ -20,10 +21,18 @@ const props = defineProps<{
 const templateComponent = computed(() =>
     getTemplateComponent(props.template.slug),
 );
+const isCreatingPortfolio = ref(false);
 
 const useTemplate = () => {
+    if (isCreatingPortfolio.value) return;
+
+    isCreatingPortfolio.value = true;
     router.post(route('templates.use', { template: props.template.slug }), {
         title: `${props.template.name} Portfolio`,
+    }, {
+        onFinish: () => {
+            isCreatingPortfolio.value = false;
+        },
     });
 };
 </script>
@@ -99,10 +108,13 @@ const useTemplate = () => {
 
                     <button
                         type="button"
-                        class="inline-flex h-10 items-center gap-2 rounded-xl bg-[#00695C] px-3.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#00574D] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00695C] focus-visible:ring-offset-2 sm:px-5 sm:text-sm"
+                        :disabled="isCreatingPortfolio"
+                        class="inline-flex h-10 items-center gap-2 rounded-xl bg-[#00695C] px-3.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#00574D] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00695C] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:px-5 sm:text-sm"
                         @click="useTemplate"
                     >
+                        <LoaderCircle v-if="isCreatingPortfolio" class="h-4 w-4 animate-spin" aria-hidden="true" />
                         <svg
+                            v-else
                             xmlns="http://www.w3.org/2000/svg"
                             width="16"
                             height="16"
@@ -118,7 +130,7 @@ const useTemplate = () => {
                             <path d="m12 5 7 7-7 7" />
                         </svg>
 
-                        Use template
+                        {{ isCreatingPortfolio ? 'Creating portfolio…' : 'Use template' }}
                     </button>
                 </div>
             </div>

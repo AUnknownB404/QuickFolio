@@ -2,7 +2,7 @@
 import AppLogo from '@/components/AppLogo.vue';
 import type { SharedData } from '@/types';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
-import { LayoutDashboard, Search, ShieldCheck, Users, WandSparkles, X } from 'lucide-vue-next';
+import { LayoutDashboard, LoaderCircle, Search, ShieldCheck, Users, WandSparkles, X } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 
 interface UserRow {
@@ -99,6 +99,10 @@ const openEditTemplate = (template: TemplateRow) => {
 };
 
 const saveTemplate = () => {
+    if (templateForm.processing) {
+        return;
+    }
+
     const options = {
         forceFormData: true,
         preserveScroll: true,
@@ -156,6 +160,10 @@ const clearThumbnailPreview = () => {
 };
 
 const closeTemplateModal = () => {
+    if (templateForm.processing) {
+        return;
+    }
+
     templateModalOpen.value = false;
     clearThumbnailPreview();
 };
@@ -481,6 +489,7 @@ const runSearch = () => {
                         <h2 class="mt-1 text-xl font-bold">{{ editingTemplate ? 'Edit template' : 'Create a template' }}</h2>
                     </div>
                     <button
+                        :disabled="templateForm.processing"
                         class="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                         aria-label="Close"
                         @click="closeTemplateModal"
@@ -488,7 +497,7 @@ const runSearch = () => {
                         <X class="h-5 w-5" />
                     </button>
                 </header>
-                <form class="space-y-5 p-6" @submit.prevent="saveTemplate">
+                <form class="space-y-5 p-6" :aria-busy="templateForm.processing" @submit.prevent="saveTemplate">
                     <div class="grid gap-4 sm:grid-cols-2">
                         <label class="space-y-1.5 text-sm font-medium"
                             >Template name
@@ -573,6 +582,7 @@ const runSearch = () => {
                     <div class="flex justify-end gap-3 border-t border-slate-100 pt-5">
                         <button
                             type="button"
+                            :disabled="templateForm.processing"
                             class="rounded-lg px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100"
                             @click="closeTemplateModal"
                         >
@@ -581,9 +591,18 @@ const runSearch = () => {
                         <button
                             type="submit"
                             :disabled="templateForm.processing"
-                            class="rounded-lg bg-emerald-800 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-900 disabled:opacity-50"
+                            class="inline-flex items-center gap-2 rounded-lg bg-emerald-800 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                            {{ templateForm.processing ? 'Saving…' : editingTemplate ? 'Save changes' : 'Create template' }}
+                            <LoaderCircle v-if="templateForm.processing" class="h-4 w-4 animate-spin" aria-hidden="true" />
+                            {{
+                                templateForm.processing
+                                    ? editingTemplate
+                                        ? 'Saving changes…'
+                                        : 'Creating template…'
+                                    : editingTemplate
+                                      ? 'Save changes'
+                                      : 'Create template'
+                            }}
                         </button>
                     </div>
                 </form>
