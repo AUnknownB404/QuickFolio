@@ -115,7 +115,8 @@ const clean = (x: unknown): string | undefined => {
     const s = String(x).trim();
     return s.length ? s : undefined;
 };
-const raw = (section: string, key: string): any => data.value[section]?.[key];
+const sectionData = (section: string): Dict => data.value[section] ?? {};
+const raw = (section: string, key: string): any => sectionData(section)[key];
 const text = (section: string, key: string) => clean(raw(section, key));
 const media = (section: string, key: string): string | undefined => {
     const r = raw(section, key);
@@ -140,14 +141,15 @@ const arr = (section: string, key: string): any[] => {
     return Array.isArray(r) ? r : [];
 };
 
-const isOn = (section: string) => props.enabled[section] !== false && !disabledSections.value.has(section);
+const isOn = (section: string) =>
+    props.enabled[section] !== false && !disabledSections.value.has(section);
 const hasContent = (value: unknown): boolean => {
     if (typeof value === 'string') return value.trim().length > 0;
     if (Array.isArray(value)) return value.some(hasContent);
     if (value && typeof value === 'object') return Object.values(value).some(hasContent);
     return false;
 };
-const has = (section: string) => isOn(section) && Object.values(data.value[section] ?? {}).some(hasContent);
+const has = (section: string) => isOn(section) && Object.values(sectionData(section)).some(hasContent);
 
 /* ------------------------------------------------------------------ */
 /* Normalised content                                                  */
@@ -182,7 +184,7 @@ const navLinks = computed(
             { id: 'about', label: 'About' },
             { id: 'journey', label: 'Journey' },
             { id: 'skills', label: 'Skills' },
-            { id: 'portfolio', label: 'Work' },
+            { id: 'projects', label: 'Work' },
             { id: 'services', label: 'Services' },
         ].filter((l) => has(l.id)),
 );
@@ -244,7 +246,7 @@ const skills = computed(() =>
 
 // Projects
 const projects = computed(() =>
-    arr('portfolio', 'projects_list')
+    arr('projects', 'projects_list')
         .map((p) => {
             const tagsRaw = p?.tags;
             const tags: string[] = Array.isArray(tagsRaw)
@@ -268,7 +270,7 @@ const projects = computed(() =>
         })
         .filter((p) => p.title),
 );
-const featureFirst = computed(() => flag('portfolio', 'projects_show_featured', false));
+const featureFirst = computed(() => flag('projects', 'projects_show_featured', false));
 
 // Services
 const services = computed(() =>
@@ -396,7 +398,7 @@ const activeId = ref('header');
 let observer: IntersectionObserver | null = null;
 let sectionObserver: IntersectionObserver | null = null;
 
-const sectionIds = ['header', 'about', 'journey', 'skills', 'portfolio', 'services', 'contact'];
+const sectionIds = ['header', 'about', 'journey', 'skills', 'projects', 'services', 'contact'];
 
 const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -717,16 +719,15 @@ const year = new Date().getFullYear();
         </section>
 
         <!-- ============================== PROJECTS ============================== -->
-        <section v-if="has('portfolio')" id="portfolio" class="relative scroll-mt-4">
-            <span id="projects" class="absolute" aria-hidden="true" />
+        <section v-if="has('projects')" id="projects" class="relative scroll-mt-4">
             <div class="mx-auto w-full max-w-[1240px] px-5 py-28 sm:px-8">
                 <div data-reveal class="mb-16 grid gap-6 lg:grid-cols-12 lg:items-end">
                     <div class="lg:col-span-7">
-                        <p v-if="text('portfolio', 'projects_subtitle')" class="nb-kicker">{{ text('portfolio', 'projects_subtitle') }}</p>
-                        <h2 v-if="text('portfolio', 'projects_title')" class="nb-display nb-h2 mt-4">{{ text('portfolio', 'projects_title') }}</h2>
+                        <p v-if="text('projects', 'projects_subtitle')" class="nb-kicker">{{ text('projects', 'projects_subtitle') }}</p>
+                        <h2 v-if="text('projects', 'projects_title')" class="nb-display nb-h2 mt-4">{{ text('projects', 'projects_title') }}</h2>
                     </div>
-                    <p v-if="text('portfolio', 'projects_description')" class="nb-muted whitespace-pre-line leading-[1.7] lg:col-span-5">
-                        {{ text('portfolio', 'projects_description') }}
+                    <p v-if="text('projects', 'projects_description')" class="nb-muted whitespace-pre-line leading-[1.7] lg:col-span-5">
+                        {{ text('projects', 'projects_description') }}
                     </p>
                 </div>
 

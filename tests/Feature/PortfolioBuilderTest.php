@@ -37,7 +37,13 @@ class PortfolioBuilderTest extends TestCase
         $response->assertStatus(200);
         $response->assertInertia(fn ($page) => $page
             ->component('Marketplace/Show')
-            ->has('template')
+            ->where('template.slug', $template->slug)
+            ->where('demoContent.header.hero_name', 'Alex Morgan')
+            ->has('demoContent.projects.projects_list')
+            ->where('demoPortfolio.google_form_url', 'https://docs.google.com/forms/d/e/1FAIpQLSf3GByS76wY0PTzNualaX5H1MsriklHss5-oaTRDhTJnz95mw/viewform?usp=pp_url&entry.2138340315=Test&entry.2068715591=test@gmail.com&entry.1647174915=Test+messages')
+            ->where('demoPortfolio.google_form_name_entry', '2138340315')
+            ->where('demoPortfolio.google_form_email_entry', '2068715591')
+            ->where('demoPortfolio.google_form_message_entry', '1647174915')
         );
     }
 
@@ -49,8 +55,9 @@ class PortfolioBuilderTest extends TestCase
 
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
-            ->component('Marketplace/Preview')
+            ->component('Marketplace/Show')
             ->where('template.slug', 'ivory-editorial')
+            ->where('demoContent.header.hero_name', 'Alex Morgan')
         );
     }
 
@@ -62,8 +69,26 @@ class PortfolioBuilderTest extends TestCase
 
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
-            ->component('Marketplace/Preview')
+            ->component('Marketplace/Show')
             ->where('template.slug', 'bento-grid')
+            ->where('demoContent.header.hero_name', 'Alex Morgan')
+        );
+    }
+
+    public function test_cobalt_brutalist_preview_includes_projects_and_services_demo_content()
+    {
+        $this->seed();
+
+        $response = $this->get('/preview/cobalt-brutalist');
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('Marketplace/Show')
+            ->where('template.slug', 'cobalt-brutalist')
+            ->has('demoContent.projects.projects_list', 3)
+            ->where('demoContent.projects.projects_title', 'Selected Works')
+            ->has('demoContent.services.services_list', 3)
+            ->where('demoContent.services.services_title', 'What I Can Do For You')
         );
     }
 
@@ -88,7 +113,7 @@ class PortfolioBuilderTest extends TestCase
 
         $this->assertSame('Cobalt Brutalist', $template->name);
         $this->assertEqualsCanonicalizing(
-            ['navbar', 'header', 'about', 'journey', 'skills', 'portfolio', 'contact', 'services'],
+            ['navbar', 'header', 'about', 'journey', 'skills', 'projects', 'contact', 'services'],
             $template->sections->pluck('section_key')->all()
         );
 
@@ -157,7 +182,7 @@ class PortfolioBuilderTest extends TestCase
         $sections = $portfolio->sections->keyBy('section_key');
         $navbar = $sections->get('navbar');
         $skills = $sections->get('skills');
-        $projects = $sections->get('portfolio');
+        $projects = $sections->get('projects');
         $logoImage = FieldDefinition::where('field_key', 'logo_image')->firstOrFail();
         $stickyNav = FieldDefinition::where('field_key', 'sticky_nav')->firstOrFail();
         $showLogo = FieldDefinition::where('field_key', 'show_logo')->firstOrFail();
@@ -567,7 +592,7 @@ class PortfolioBuilderTest extends TestCase
         Storage::disk('public')->put($assetPath, 'profile-image');
 
         $header = $portfolio->sections()->where('section_key', 'header')->firstOrFail();
-        $projects = $portfolio->sections()->where('section_key', 'portfolio')->firstOrFail();
+        $projects = $portfolio->sections()->where('section_key', 'projects')->firstOrFail();
         PortfolioFieldValue::updateOrCreate(
             [
                 'portfolio_section_id' => $header->id,
@@ -620,7 +645,7 @@ class PortfolioBuilderTest extends TestCase
             $this->assertSame(file_get_contents(public_path('Logo.png')), $pngLogo);
             $this->assertStringContainsString('data-template="dark-orange-designer"', $html);
             $this->assertStringContainsString('<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>', $html);
-            $this->assertStringContainsString('id="portfolio" data-section', $html);
+            $this->assertStringContainsString('id="projects" data-section', $html);
             $this->assertStringContainsString('<nav class="nav" aria-label="Main navigation">', $html);
             $this->assertStringContainsString('id="mobile-navigation"', $html);
             $this->assertStringContainsString('aria-controls="mobile-navigation"', $html);
@@ -668,7 +693,7 @@ class PortfolioBuilderTest extends TestCase
         $header = $portfolio->sections()->where('section_key', 'header')->firstOrFail();
         $about = $portfolio->sections()->where('section_key', 'about')->firstOrFail();
         $skills = $portfolio->sections()->where('section_key', 'skills')->firstOrFail();
-        $projects = $portfolio->sections()->where('section_key', 'portfolio')->firstOrFail();
+        $projects = $portfolio->sections()->where('section_key', 'projects')->firstOrFail();
         $contact = $portfolio->sections()->where('section_key', 'contact')->firstOrFail();
         foreach ([
             [$header, 'hero_name', 'Editorial Designer'],
@@ -761,7 +786,7 @@ class PortfolioBuilderTest extends TestCase
         Storage::disk('public')->put($assetPath, 'bento-project-image');
 
         $header = $portfolio->sections()->where('section_key', 'header')->firstOrFail();
-        $projects = $portfolio->sections()->where('section_key', 'portfolio')->firstOrFail();
+        $projects = $portfolio->sections()->where('section_key', 'projects')->firstOrFail();
         PortfolioFieldValue::updateOrCreate(
             [
                 'portfolio_section_id' => $header->id,
@@ -851,7 +876,7 @@ class PortfolioBuilderTest extends TestCase
         $header = $portfolio->sections()->where('section_key', 'header')->firstOrFail();
         $about = $portfolio->sections()->where('section_key', 'about')->firstOrFail();
         $skills = $portfolio->sections()->where('section_key', 'skills')->firstOrFail();
-        $projects = $portfolio->sections()->where('section_key', 'portfolio')->firstOrFail();
+        $projects = $portfolio->sections()->where('section_key', 'projects')->firstOrFail();
         $contact = $portfolio->sections()->where('section_key', 'contact')->firstOrFail();
         foreach ([
             [$header, 'hero_name', 'Cobalt Designer'],
@@ -943,7 +968,7 @@ class PortfolioBuilderTest extends TestCase
         Storage::disk('public')->put($assetPath, 'emerald-profile-image');
         $header = $portfolio->sections()->where('section_key', 'header')->firstOrFail();
         $skills = $portfolio->sections()->where('section_key', 'skills')->firstOrFail();
-        $projects = $portfolio->sections()->where('section_key', 'portfolio')->firstOrFail();
+        $projects = $portfolio->sections()->where('section_key', 'projects')->firstOrFail();
         $contact = $portfolio->sections()->where('section_key', 'contact')->firstOrFail();
         PortfolioFieldValue::updateOrCreate(
             [

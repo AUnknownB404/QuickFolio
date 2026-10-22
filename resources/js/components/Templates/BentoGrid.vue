@@ -36,9 +36,9 @@ const hero = computed(() => props.content?.header || {});
 const about = computed(() => props.content?.about || {});
 const journey = computed(() => props.content?.journey || {});
 const skills = computed(() => props.content?.skills || {});
-const portfolio = computed(() => props.content?.portfolio || props.content?.projects || {});
+const projectSection = computed(() => props.content?.projects || {});
 const contact = computed(() => props.content?.contact || {});
-const projects = computed<any[]>(() => portfolio.value.projects_list || portfolio.value.projects || []);
+const projects = computed<any[]>(() => projectSection.value.projects_list || projectSection.value.projects || []);
 
 const hasAbout = computed(() => about.value.about_title || about.value.about_description || about.value.about_image || about.value.about_cv_file);
 const hasContact = computed(
@@ -54,7 +54,7 @@ const hasContact = computed(
 const links = computed(() => {
     const l = [{ id: 'home', label: 'Intro' }];
     if (hasAbout.value) l.push({ id: 'about', label: 'About' });
-    if (projects.value.length) l.push({ id: 'portfolio', label: 'Work' });
+    if (projects.value.length) l.push({ id: 'projects', label: 'Work' });
     if (skills.value.skills_list?.length) l.push({ id: 'skills', label: 'Skills' });
     if (journey.value.journey_list?.length) l.push({ id: 'journey', label: 'Journey' });
     if (hasContact.value) l.push({ id: 'contact', label: 'Contact' });
@@ -203,7 +203,7 @@ onBeforeUnmount(() => {
                         </p>
 
                         <div class="rail-fade mt-10 flex flex-wrap items-center gap-x-8 gap-y-4" style="--i: 7">
-                            <a v-if="hero.hero_cta_primary_text" :href="hero.hero_cta_primary_url || '#portfolio'" class="btn-ink group">
+                            <a v-if="hero.hero_cta_primary_text" :href="hero.hero_cta_primary_url || '#projects'" class="btn-ink group">
                                 {{ hero.hero_cta_primary_text }}
                                 <span class="btn-ink-icon" aria-hidden="true">↓</span>
                             </a>
@@ -236,11 +236,11 @@ onBeforeUnmount(() => {
                 </section>
 
                 <!-- WORK: cards stack as you scroll -->
-                <section v-if="projects.length" id="portfolio" data-section class="section">
+                <section v-if="projects.length" id="projects" data-section class="section">
                     <div class="mb-12 flex flex-wrap items-end justify-between gap-4">
                         <div>
-                            <h2 v-if="portfolio.projects_title" class="h2">{{ portfolio.projects_title }}</h2>
-                            <p v-if="portfolio.projects_subtitle" class="mt-4 max-w-lg text-lg text-[var(--muted)]">{{ portfolio.projects_subtitle }}</p>
+                            <h2 v-if="projectSection.projects_title" class="h2">{{ projectSection.projects_title }}</h2>
+                            <p v-if="projectSection.projects_subtitle" class="mt-4 max-w-lg text-lg text-[var(--muted)]">{{ projectSection.projects_subtitle }}</p>
                         </div>
                         <p class="text-[var(--muted)]">{{ projects.length }} {{ projects.length === 1 ? 'project' : 'projects' }}</p>
                     </div>

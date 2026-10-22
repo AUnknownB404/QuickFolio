@@ -77,7 +77,7 @@ class TemplateSeeder extends Seeder
             ],
         ];
 
-        $sections = ['navbar', 'header', 'about', 'journey', 'skills', 'portfolio', 'contact'];
+        $sections = ['navbar', 'header', 'about', 'journey', 'skills', 'projects', 'contact'];
         $fieldDefs = FieldDefinition::all()->keyBy('field_key');
 
         foreach ($templatesData as $tData) {
@@ -111,7 +111,7 @@ class TemplateSeeder extends Seeder
                     'about' => ['about_title', 'about_description', 'about_image', 'about_cv_file'],
                     'journey' => ['journey_title', 'journey_subtitle', 'journey_list'],
                     'skills' => ['skills_title', 'skills_description', 'skills_list'],
-                    'portfolio' => ['projects_title', 'projects_subtitle', 'projects_list'],
+                    'projects' => ['projects_title', 'projects_subtitle', 'projects_list'],
                     'contact' => ['contact_title', 'contact_description', 'contact_email', 'contact_phone', 'contact_location'],
                     'services' => ['services_title', 'services_subtitle', 'services_list'],
                     default => [],
@@ -123,7 +123,7 @@ class TemplateSeeder extends Seeder
                         'header' => ['hero_background_image', 'hero_cta_secondary_text', 'hero_cta_secondary_url'],
                         'about' => ['about_subtitle', 'about_highlights', 'about_cta_text', 'about_cta_url'],
                         'skills' => ['skills_subtitle', 'skills_show_level', 'skills_show_icon'],
-                        'portfolio' => ['projects_description', 'projects_show_featured'],
+                        'projects' => ['projects_description', 'projects_show_featured'],
                         'contact' => ['contact_subtitle', 'contact_social_links', 'contact_form_enabled'],
                         default => [],
                     });

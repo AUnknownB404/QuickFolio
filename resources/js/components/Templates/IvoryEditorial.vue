@@ -7,7 +7,7 @@
  * a floating nav that hides on scroll, a masked hero reveal with a parallax portrait,
  * word-by-word about text, animated skill bars, and a Google Form contact form.
  *
- * `content` is keyed by section key (navbar, header, about, journey, skills, portfolio, contact).
+ * `content` is keyed by section key (navbar, header, about, journey, skills, projects, contact).
  * An array of `{ section_key, is_enabled, field_values: [...] }` is also accepted.
  */
 import { resolvePortfolioMediaUrl } from '@/lib/media';
@@ -68,7 +68,6 @@ const data = computed<Record<string, Dict>>(() => {
             out[key] = s?.values ?? s?.content ?? s ?? {};
         }
     }
-    if (!out.portfolio && out.projects) out.portfolio = out.projects;
     disabledSections.value = off;
     return out;
 });
@@ -78,7 +77,8 @@ const clean = (x: unknown): string | undefined => {
     const s = String(x).trim();
     return s.length ? s : undefined;
 };
-const raw = (section: string, key: string): any => data.value[section]?.[key];
+const sectionData = (section: string): Dict => data.value[section] ?? {};
+const raw = (section: string, key: string): any => sectionData(section)[key];
 const text = (section: string, key: string) => clean(raw(section, key));
 const media = (section: string, key: string): string | undefined => {
     const r = raw(section, key);
@@ -103,14 +103,15 @@ const arr = (section: string, key: string): any[] => {
     return Array.isArray(r) ? r : [];
 };
 
-const isOn = (section: string) => props.enabled[section] !== false && !disabledSections.value.has(section);
+const isOn = (section: string) =>
+    props.enabled[section] !== false && !disabledSections.value.has(section);
 const hasContent = (value: unknown): boolean => {
     if (typeof value === 'string') return value.trim().length > 0;
     if (Array.isArray(value)) return value.some(hasContent);
     if (value && typeof value === 'object') return Object.values(value).some(hasContent);
     return false;
 };
-const has = (section: string) => isOn(section) && Object.values(data.value[section] ?? {}).some(hasContent);
+const has = (section: string) => isOn(section) && Object.values(sectionData(section)).some(hasContent);
 
 /* ------------------------------------------------------------------ */
 /* Normalised content                                                  */
@@ -214,8 +215,8 @@ const tickOn = (pct: number | null) => Math.round(((pct ?? 0) / 100) * TICKS);
 
 // Projects
 const projects = computed(() => {
-    const list = arr('portfolio', 'projects_list');
-    return (list.length ? list : arr('portfolio', 'projects'))
+    const list = arr('projects', 'projects_list');
+    return (list.length ? list : arr('projects', 'projects'))
         .map((p) => {
             const imageValue = typeof p?.image === 'string' ? clean(p.image) : clean(p?.image?.url ?? p?.image?.path);
             return {
@@ -284,7 +285,7 @@ const navLinks = computed(
             { id: 'about', label: 'About' },
             { id: 'journey', label: 'Journey' },
             { id: 'skills', label: 'Skills' },
-            { id: 'portfolio', label: 'Work' },
+            { id: 'projects', label: 'Work' },
         ].filter((l) => has(l.id)),
 );
 
@@ -302,7 +303,7 @@ let lastY = 0;
 let observer: IntersectionObserver | null = null;
 let sectionObserver: IntersectionObserver | null = null;
 
-const sectionIds = ['home', 'about', 'journey', 'skills', 'portfolio', 'contact'];
+const sectionIds = ['home', 'about', 'journey', 'skills', 'projects', 'contact'];
 const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const onNavClick = (e: Event, url?: string) => {
@@ -617,12 +618,12 @@ const year = new Date().getFullYear();
             </section>
 
             <!-- ============================== PROJECTS ============================== -->
-            <section v-if="has('portfolio')" id="portfolio" class="scroll-mt-4 px-6 py-28 sm:py-36 lg:px-10">
+            <section v-if="has('projects')" id="projects" class="scroll-mt-4 px-6 py-28 sm:py-36 lg:px-10">
                 <div class="mx-auto max-w-7xl">
                     <div data-reveal class="mb-14 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-                        <h2 v-if="text('portfolio', 'projects_title')" class="ie-serif ie-h2 max-w-2xl">{{ text('portfolio', 'projects_title') }}</h2>
-                        <p v-if="text('portfolio', 'projects_subtitle') || text('portfolio', 'projects_description')" class="max-w-sm whitespace-pre-line leading-7 text-[var(--muted)]">
-                            {{ text('portfolio', 'projects_subtitle') ?? text('portfolio', 'projects_description') }}
+                        <h2 v-if="text('projects', 'projects_title')" class="ie-serif ie-h2 max-w-2xl">{{ text('projects', 'projects_title') }}</h2>
+                        <p v-if="text('projects', 'projects_subtitle') || text('projects', 'projects_description')" class="max-w-sm whitespace-pre-line leading-7 text-[var(--muted)]">
+                            {{ text('projects', 'projects_subtitle') ?? text('projects', 'projects_description') }}
                         </p>
                     </div>
                     <div class="ie-rule mb-14" data-reveal aria-hidden="true" />

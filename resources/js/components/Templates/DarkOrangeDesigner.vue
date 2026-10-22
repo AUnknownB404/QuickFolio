@@ -29,7 +29,7 @@ const hero = computed(() => props.content?.header || {});
 const about = computed(() => props.content?.about || {});
 const journey = computed(() => props.content?.journey || {});
 const skills = computed(() => props.content?.skills || {});
-const portfolio = computed(() => props.content?.portfolio || props.content?.projects || {});
+const projectSection = computed(() => props.content?.projects || {});
 const contact = computed(() => props.content?.contact || {});
 
 const googleForm = computed<GoogleFormIntegration | null>(() => {
@@ -66,7 +66,7 @@ const onSubmit = (event: Event) => {
 
 /* ---------- Projects + category filter ---------- */
 const activeCategory = ref('All');
-const allProjects = computed<any[]>(() => portfolio.value.projects_list || portfolio.value.projects || []);
+const allProjects = computed<any[]>(() => projectSection.value.projects_list || projectSection.value.projects || []);
 const categories = computed(() => {
     const set = new Set<string>();
     allProjects.value.forEach((p) => p.category && set.add(p.category));
@@ -81,7 +81,7 @@ const links = computed(() => {
     const l = [{ id: 'about', label: 'About' }];
     if (journey.value.journey_list?.length) l.push({ id: 'journey', label: 'Journey' });
     if (skills.value.skills_list?.length) l.push({ id: 'skills', label: 'Skills' });
-    if (allProjects.value.length) l.push({ id: 'portfolio', label: 'Work' });
+    if (allProjects.value.length) l.push({ id: 'projects', label: 'Work' });
     l.push({ id: 'contact', label: 'Contact' });
     return l;
 });
@@ -222,7 +222,7 @@ const heroWords = computed(() => (hero.value.hero_name || '').split(' ').filter(
                     </p>
 
                     <div v-if="hero.hero_cta_primary_text" class="hero-line mt-10" :style="{ '--i': heroWords.length + 4 }">
-                        <a :href="hero.hero_cta_primary_url || '#portfolio'" class="btn-primary focus-ring group">
+                        <a :href="hero.hero_cta_primary_url || '#projects'" class="btn-primary focus-ring group">
                             <span>{{ hero.hero_cta_primary_text }}</span>
                             <span class="btn-arrow">
                                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M5 12h14m-6-6 6 6-6 6" /></svg>
@@ -319,12 +319,12 @@ const heroWords = computed(() => (hero.value.hero_name || '').split(' ').filter(
         </section>
 
         <!-- Work -->
-        <section v-if="allProjects.length" id="portfolio" data-section class="section">
+        <section v-if="allProjects.length" id="projects" data-section class="section">
             <div class="mx-auto max-w-7xl">
                 <div class="flex flex-wrap items-end justify-between gap-8">
                     <div class="max-w-2xl">
-                        <h2 v-if="portfolio.projects_title" v-reveal class="h2">{{ portfolio.projects_title }}</h2>
-                        <p v-if="portfolio.projects_subtitle" v-reveal="100" class="mt-5 text-lg text-[var(--muted)]">{{ portfolio.projects_subtitle }}</p>
+                        <h2 v-if="projectSection.projects_title" v-reveal class="h2">{{ projectSection.projects_title }}</h2>
+                        <p v-if="projectSection.projects_subtitle" v-reveal="100" class="mt-5 text-lg text-[var(--muted)]">{{ projectSection.projects_subtitle }}</p>
                     </div>
 
                     <div v-if="categories.length" v-reveal="150" class="flex flex-wrap gap-2" role="tablist" aria-label="Filter projects">

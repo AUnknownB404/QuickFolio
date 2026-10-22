@@ -135,7 +135,7 @@ const fieldGroupFor = (fieldKey: string) => {
     return ['nav', 'cta', 'logo', 'sticky', 'show'].includes(prefix) ? 'navbar' : prefix;
 };
 
-const sectionGroupFor = (sectionKey: string) => ({ header: 'hero', nav: 'navbar', portfolio: 'projects' } as Record<string, string>)[sectionKey] ?? sectionKey;
+const sectionGroupFor = (sectionKey: string) => ({ header: 'hero', nav: 'navbar' } as Record<string, string>)[sectionKey] ?? sectionKey;
 
 /**
  * Fields shown for a section: the template's configured fields (keeping their
@@ -377,8 +377,7 @@ const switchTemplate = () => {
 const humanize = (value: string) =>
     value.replace(/[-_]/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 
-const sidebarSectionLabel = (sectionKey: string) =>
-    sectionKey === 'portfolio' ? 'Project' : humanize(sectionKey);
+const sidebarSectionLabel = (sectionKey: string) => humanize(sectionKey);
 
 const sectionFieldCount = (sectionKey: string) => {
     return fieldsForSection(sectionKey).filter((field) =>

@@ -40,28 +40,17 @@ class TemplateController extends Controller
 
     public function show(Template $template)
     {
-        if (!$template->is_published) {
-            abort(404);
-        }
-
-        $template->load(['category', 'media', 'sections.fields.fieldDefinition']);
-
-        // Find other published templates for recommendations
-        $relatedTemplates = Template::with(['category', 'media'])
-            ->where('is_published', true)
-            ->where('id', '!=', $template->id)
-            ->limit(3)
-            ->get();
-
-        return Inertia::render('Marketplace/Show', [
-            'template' => $template,
-            'relatedTemplates' => $relatedTemplates,
-        ]);
+        return $this->renderPreview($template);
     }
 
     public function preview(Template $template)
     {
-        if (!$template->is_published) {
+        return $this->renderPreview($template);
+    }
+
+    private function renderPreview(Template $template)
+    {
+        if (! $template->is_published) {
             abort(404);
         }
 
@@ -75,7 +64,7 @@ class TemplateController extends Controller
                     ['label' => 'About', 'url' => '#about'],
                     ['label' => 'Journey', 'url' => '#journey'],
                     ['label' => 'Skills', 'url' => '#skills'],
-                    ['label' => 'Portfolio', 'url' => '#portfolio'],
+                    ['label' => 'Projects', 'url' => '#projects'],
                     ['label' => 'Contact', 'url' => '#contact'],
                 ],
                 'cta_text' => 'Let’s Talk',
@@ -88,7 +77,7 @@ class TemplateController extends Controller
                 'hero_description' => 'Crafting high-performance web applications and exceptional user interfaces with precision and passion.',
                 'hero_image' => 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80',
                 'hero_cta_primary_text' => 'Explore Works',
-                'hero_cta_primary_url' => '#portfolio',
+                'hero_cta_primary_url' => '#projects',
             ],
             'about' => [
                 'about_title' => 'Design-driven engineering for ambitious products.',
@@ -118,10 +107,20 @@ class TemplateController extends Controller
             'projects' => [
                 'projects_title' => 'Selected Works',
                 'projects_subtitle' => 'A curated showcase of recent production builds and design systems.',
+                'projects_description' => 'A selection of digital products built with thoughtful design and reliable engineering.',
                 'projects_list' => [
                     ['title' => 'Nexus SaaS Dashboard', 'category' => 'UI/UX Design', 'image' => 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=800&q=80', 'url' => 'https://example.com'],
                     ['title' => 'CloudScale Analytics', 'category' => 'Web App', 'image' => 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=800&q=80', 'url' => 'https://example.com'],
                     ['title' => 'Cryptographic Design System', 'category' => 'Design System', 'image' => 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=800&q=80', 'url' => 'https://example.com'],
+                ],
+            ],
+            'services' => [
+                'services_title' => 'What I Can Do For You',
+                'services_subtitle' => 'End-to-end expertise to bring your next idea to life.',
+                'services_list' => [
+                    ['title' => 'Product Design', 'description' => 'Research-led user experiences and polished interfaces that make complex products feel simple.', 'icon' => 'palette'],
+                    ['title' => 'Web Development', 'description' => 'Fast, accessible websites and applications built for real users and real-world scale.', 'icon' => 'code'],
+                    ['title' => 'Design Systems', 'description' => 'Flexible component systems that help teams ship consistent, high-quality experiences.', 'icon' => 'layers'],
                 ],
             ],
             'contact' => [
@@ -130,13 +129,22 @@ class TemplateController extends Controller
                 'contact_email' => 'alex.morgan@example.com',
                 'contact_phone' => '+1 (555) 234-5678',
                 'contact_location' => 'San Francisco, CA',
+                'contact_form_enabled' => true,
             ],
         ];
 
-        return Inertia::render('Marketplace/Preview', [
+        $demoPortfolio = [
+            'google_form_url' => 'https://docs.google.com/forms/d/e/1FAIpQLSf3GByS76wY0PTzNualaX5H1MsriklHss5-oaTRDhTJnz95mw/viewform?usp=pp_url&entry.2138340315=Test&entry.2068715591=test@gmail.com&entry.1647174915=Test+messages',
+            'google_form_name_entry' => '2138340315',
+            'google_form_email_entry' => '2068715591',
+            'google_form_message_entry' => '1647174915',
+        ];
+
+        return Inertia::render('Marketplace/Show', [
             'template' => $template,
             'demoContent' => $demoContent,
             'designSettings' => [],
+            'demoPortfolio' => $demoPortfolio,
         ]);
     }
 }

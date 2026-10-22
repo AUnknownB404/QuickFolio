@@ -173,7 +173,7 @@ class PortfolioExportController extends Controller
         $about = $this->sectionData($content['about'] ?? []);
         $journey = $this->sectionData($content['journey'] ?? []);
         $skills = $this->sectionData($content['skills'] ?? []);
-        $projects = $this->sectionData($content['portfolio'] ?? $content['projects'] ?? []);
+        $projects = $this->sectionData($content['projects'] ?? []);
         $contact = $this->sectionData($content['contact'] ?? []);
         $services = $this->sectionData($content['services'] ?? []);
 
@@ -195,7 +195,7 @@ class PortfolioExportController extends Controller
             $hero .= '<p class="hero-description">'.$escape($header['hero_description']).'</p>';
         }
         if (! empty($header['hero_cta_primary_text'])) {
-            $hero .= '<a class="button" href="'.$url($header['hero_cta_primary_url'] ?? null, '#portfolio').'">'.$escape($header['hero_cta_primary_text']).'</a>';
+            $hero .= '<a class="button" href="'.$url($header['hero_cta_primary_url'] ?? null, '#projects').'">'.$escape($header['hero_cta_primary_text']).'</a>';
         }
         $hero .= '</div>';
         if ($heroImage !== '') {
@@ -269,9 +269,9 @@ class PortfolioExportController extends Controller
         $about = $this->sectionData($content['about'] ?? []);
         $journey = $this->sectionData($content['journey'] ?? []);
         $skills = $this->sectionData($content['skills'] ?? []);
-        $portfolio = $this->sectionData($content['portfolio'] ?? $content['projects'] ?? []);
+        $projectContent = $this->sectionData($content['projects'] ?? []);
         $contact = $this->sectionData($content['contact'] ?? []);
-        $projects = $this->items($portfolio['projects_list'] ?? $portfolio['projects'] ?? []);
+        $projects = $this->items($projectContent['projects_list'] ?? $projectContent['projects'] ?? []);
         $skillItems = $this->items($skills['skills_list'] ?? []);
         $journeyItems = $this->items($journey['journey_list'] ?? []);
 
@@ -293,7 +293,7 @@ class PortfolioExportController extends Controller
             $links[] = ['id' => 'about', 'label' => 'About'];
         }
         if ($projects !== []) {
-            $links[] = ['id' => 'portfolio', 'label' => 'Work'];
+            $links[] = ['id' => 'projects', 'label' => 'Work'];
         }
         if ($skillItems !== []) {
             $links[] = ['id' => 'skills', 'label' => 'Skills'];
@@ -367,7 +367,7 @@ class PortfolioExportController extends Controller
         }
         $html .= '<div class="rail-fade mt-10 flex flex-wrap items-center gap-x-8 gap-y-4" style="--i: 7">';
         if (! empty($hero['hero_cta_primary_text'])) {
-            $html .= '<a href="'.$url($hero['hero_cta_primary_url'] ?? null, '#portfolio').'" class="btn-ink group">'.$escape($hero['hero_cta_primary_text']).'<span class="btn-ink-icon" aria-hidden="true">↓</span></a>';
+            $html .= '<a href="'.$url($hero['hero_cta_primary_url'] ?? null, '#projects').'" class="btn-ink group">'.$escape($hero['hero_cta_primary_text']).'<span class="btn-ink-icon" aria-hidden="true">↓</span></a>';
         }
         foreach ($this->items($hero['hero_social_links'] ?? []) as $socialLink) {
             $html .= '<a href="'.$url($socialLink['url'] ?? null).'" target="_blank" rel="noreferrer" class="sweep font-semibold lg:hidden">'.$escape($socialLink['label'] ?? '').'</a>';
@@ -406,13 +406,13 @@ class PortfolioExportController extends Controller
         }
 
         if ($projects !== []) {
-            $html .= '<section id="portfolio" data-section class="section">
+            $html .= '<section id="projects" data-section class="section">
                 <div class="mb-12 flex flex-wrap items-end justify-between gap-4"><div>';
-            if (! empty($portfolio['projects_title'])) {
-                $html .= '<h2 class="h2">'.$escape($portfolio['projects_title']).'</h2>';
+            if (! empty($projectContent['projects_title'])) {
+                $html .= '<h2 class="h2">'.$escape($projectContent['projects_title']).'</h2>';
             }
-            if (! empty($portfolio['projects_subtitle'])) {
-                $html .= '<p class="mt-4 max-w-lg text-lg text-[var(--muted)]">'.$escape($portfolio['projects_subtitle']).'</p>';
+            if (! empty($projectContent['projects_subtitle'])) {
+                $html .= '<p class="mt-4 max-w-lg text-lg text-[var(--muted)]">'.$escape($projectContent['projects_subtitle']).'</p>';
             }
             $projectCount = count($projects);
             $html .= '</div><p class="text-[var(--muted)]">'.$projectCount.' '.($projectCount === 1 ? 'project' : 'projects').'</p></div><div>';
@@ -580,14 +580,14 @@ class PortfolioExportController extends Controller
         $about = $this->sectionData($content['about'] ?? []);
         $journey = $this->sectionData($content['journey'] ?? []);
         $skillsData = $this->sectionData($content['skills'] ?? []);
-        $portfolio = $this->sectionData($content['portfolio'] ?? $content['projects'] ?? []);
+        $projectContent = $this->sectionData($content['projects'] ?? []);
         $servicesData = $this->sectionData($content['services'] ?? []);
         $contact = $this->sectionData($content['contact'] ?? []);
 
         $highlights = $list($about['about_highlights'] ?? []);
         $journeyItems = $list($journey['journey_list'] ?? []);
         $skills = $list($skillsData['skills_list'] ?? []);
-        $projects = $list($portfolio['projects_list'] ?? []);
+        $projects = $list($projectContent['projects_list'] ?? []);
         $services = $list($servicesData['services_list'] ?? []);
         $heroSocials = $list($header['hero_social_links'] ?? []);
         $contactSocials = $list($contact['contact_social_links'] ?? []);
@@ -614,8 +614,8 @@ class PortfolioExportController extends Controller
         $hasJourney = ! empty($journey['journey_subtitle']) || ! empty($journey['journey_title']) || $journeyItems !== [];
         $hasSkills = ! empty($skillsData['skills_subtitle']) || ! empty($skillsData['skills_title'])
             || ! empty($skillsData['skills_description']) || $skills !== [];
-        $hasProjects = ! empty($portfolio['projects_subtitle']) || ! empty($portfolio['projects_title'])
-            || ! empty($portfolio['projects_description']) || $projects !== [];
+        $hasProjects = ! empty($projectContent['projects_subtitle']) || ! empty($projectContent['projects_title'])
+            || ! empty($projectContent['projects_description']) || $projects !== [];
         $hasServices = ! empty($servicesData['services_subtitle']) || ! empty($servicesData['services_title']) || $services !== [];
         $hasContact = ! empty($contact['contact_subtitle']) || ! empty($contact['contact_title'])
             || ! empty($contact['contact_description']) || $email !== '' || $phone !== '' || $location !== ''
@@ -626,7 +626,7 @@ class PortfolioExportController extends Controller
             ['about', 'About', $hasAbout],
             ['journey', 'Journey', $hasJourney],
             ['skills', 'Skills', $hasSkills],
-            ['portfolio', 'Work', $hasProjects],
+            ['projects', 'Work', $hasProjects],
             ['services', 'Services', $hasServices],
         ] as [$id, $label, $sectionEnabled]) {
             if ($sectionEnabled) {
@@ -843,17 +843,17 @@ class PortfolioExportController extends Controller
         }
 
         if ($hasProjects) {
-            $featureFirst = $isEnabled($portfolio['projects_show_featured'] ?? null, false);
-            $html .= '<section id="portfolio" data-page-section><span id="projects"></span><div class="nb-container nb-projects-section"><div class="nb-project-heading" data-reveal><div>';
-            if (! empty($portfolio['projects_subtitle'])) {
-                $html .= '<p class="nb-kicker">'.$escape($portfolio['projects_subtitle']).'</p>';
+            $featureFirst = $isEnabled($projectContent['projects_show_featured'] ?? null, false);
+            $html .= '<section id="projects" data-page-section><div class="nb-container nb-projects-section"><div class="nb-project-heading" data-reveal><div>';
+            if (! empty($projectContent['projects_subtitle'])) {
+                $html .= '<p class="nb-kicker">'.$escape($projectContent['projects_subtitle']).'</p>';
             }
-            if (! empty($portfolio['projects_title'])) {
-                $html .= '<h2 class="nb-display nb-h2">'.$escape($portfolio['projects_title']).'</h2>';
+            if (! empty($projectContent['projects_title'])) {
+                $html .= '<h2 class="nb-display nb-h2">'.$escape($projectContent['projects_title']).'</h2>';
             }
             $html .= '</div>';
-            if (! empty($portfolio['projects_description'])) {
-                $html .= '<p class="nb-muted">'.$escape($portfolio['projects_description']).'</p>';
+            if (! empty($projectContent['projects_description'])) {
+                $html .= '<p class="nb-muted">'.$escape($projectContent['projects_description']).'</p>';
             }
             $html .= '</div><ul class="nb-project-grid">';
             foreach ($projects as $index => $project) {
@@ -1021,9 +1021,9 @@ class PortfolioExportController extends Controller
         $about = $this->sectionData($content['about'] ?? []);
         $journey = $this->sectionData($content['journey'] ?? []);
         $skills = $this->sectionData($content['skills'] ?? []);
-        $portfolio = $this->sectionData($content['portfolio'] ?? $content['projects'] ?? []);
+        $projectContent = $this->sectionData($content['projects'] ?? []);
         $contact = $this->sectionData($content['contact'] ?? []);
-        $projects = $this->items($portfolio['projects_list'] ?? $portfolio['projects'] ?? []);
+        $projects = $this->items($projectContent['projects_list'] ?? $projectContent['projects'] ?? []);
         $journeyItems = $this->items($journey['journey_list'] ?? []);
         $skillItems = $this->items($skills['skills_list'] ?? []);
         $links = [['id' => 'about', 'label' => 'About']];
@@ -1034,7 +1034,7 @@ class PortfolioExportController extends Controller
             $links[] = ['id' => 'skills', 'label' => 'Skills'];
         }
         if ($projects !== []) {
-            $links[] = ['id' => 'portfolio', 'label' => 'Work'];
+            $links[] = ['id' => 'projects', 'label' => 'Work'];
         }
         $links[] = ['id' => 'contact', 'label' => 'Contact'];
 
@@ -1081,7 +1081,7 @@ class PortfolioExportController extends Controller
             $html .= '<p class="hero-line hero-description" style="--i:'.(count($heroWords) + 3).'">'.$escape($hero['hero_description']).'</p>';
         }
         if (! empty($hero['hero_cta_primary_text'])) {
-            $html .= '<div class="hero-line hero-cta" style="--i:'.(count($heroWords) + 4).'"><a href="'.$url($hero['hero_cta_primary_url'] ?? null, '#portfolio').'" class="btn-primary">'.$escape($hero['hero_cta_primary_text']).'<span class="btn-arrow" aria-hidden="true">→</span></a></div>';
+            $html .= '<div class="hero-line hero-cta" style="--i:'.(count($heroWords) + 4).'"><a href="'.$url($hero['hero_cta_primary_url'] ?? null, '#projects').'" class="btn-primary">'.$escape($hero['hero_cta_primary_text']).'<span class="btn-arrow" aria-hidden="true">→</span></a></div>';
         }
         $heroFallback = $heroName !== '' ? mb_substr($heroName, 0, 1) : ($brand !== '' ? mb_substr($brand, 0, 1) : '•');
         $html .= '</div><div class="hero-portrait hero-line" style="--i:3"><div class="portrait-wrap"><div class="portrait">';
@@ -1158,12 +1158,12 @@ class PortfolioExportController extends Controller
                 static fn (array $project): string => is_string($project['category'] ?? null) ? $project['category'] : '',
                 $projects
             ))));
-            $html .= '<section id="portfolio" data-section class="section"><div class="content-width"><div class="work-heading"><div>';
-            if (! empty($portfolio['projects_title'])) {
-                $html .= '<h2 class="h2 reveal">'.$escape($portfolio['projects_title']).'</h2>';
+            $html .= '<section id="projects" data-section class="section"><div class="content-width"><div class="work-heading"><div>';
+            if (! empty($projectContent['projects_title'])) {
+                $html .= '<h2 class="h2 reveal">'.$escape($projectContent['projects_title']).'</h2>';
             }
-            if (! empty($portfolio['projects_subtitle'])) {
-                $html .= '<p class="section-description reveal" style="--d:100ms">'.$escape($portfolio['projects_subtitle']).'</p>';
+            if (! empty($projectContent['projects_subtitle'])) {
+                $html .= '<p class="section-description reveal" style="--d:100ms">'.$escape($projectContent['projects_subtitle']).'</p>';
             }
             $html .= '</div>';
             if (count($categories) > 1) {
@@ -1268,9 +1268,9 @@ class PortfolioExportController extends Controller
         $about = $this->sectionData($content['about'] ?? []);
         $journey = $this->sectionData($content['journey'] ?? []);
         $skills = $this->sectionData($content['skills'] ?? []);
-        $portfolio = $this->sectionData($content['portfolio'] ?? $content['projects'] ?? []);
+        $projectContent = $this->sectionData($content['projects'] ?? []);
         $contact = $this->sectionData($content['contact'] ?? []);
-        $projects = $this->items($portfolio['projects_list'] ?? $portfolio['projects'] ?? []);
+        $projects = $this->items($projectContent['projects_list'] ?? $projectContent['projects'] ?? []);
         $journeyItems = $this->items($journey['journey_list'] ?? []);
         $skillItems = $this->items($skills['skills_list'] ?? []);
         $categories = array_values(array_unique(array_filter(array_map(
@@ -1310,7 +1310,7 @@ class PortfolioExportController extends Controller
             $navLinks[] = ['id' => 'skills', 'label' => 'Skills'];
         }
         if ($projects !== []) {
-            $navLinks[] = ['id' => 'portfolio', 'label' => 'Projects'];
+            $navLinks[] = ['id' => 'projects', 'label' => 'Projects'];
         }
         $navLinks[] = ['id' => 'contact', 'label' => 'Contact'];
         $desktopNav = '';
@@ -1355,7 +1355,7 @@ class PortfolioExportController extends Controller
             $html .= '<p class="em-hero-in em-hero-description" style="--delay:.85s">'.$escape($hero['hero_description']).'</p>';
         }
         if (! empty($hero['hero_cta_primary_text'])) {
-            $html .= '<div class="em-hero-in em-hero-cta" style="--delay:1s"><a href="'.$url($hero['hero_cta_primary_url'] ?? null, '#portfolio').'" class="em-cta">'.$escape($hero['hero_cta_primary_text']).'<span aria-hidden="true">→</span></a></div>';
+            $html .= '<div class="em-hero-in em-hero-cta" style="--delay:1s"><a href="'.$url($hero['hero_cta_primary_url'] ?? null, '#projects').'" class="em-cta">'.$escape($hero['hero_cta_primary_text']).'<span aria-hidden="true">→</span></a></div>';
         }
         $heroFallback = $heroName !== '' ? mb_substr($heroName, 0, 1) : '';
         $html .= '</div><div class="em-hero-portrait em-hero-in" style="--delay:.4s"><div class="em-portrait-wrap"><span class="em-ring em-ring-1"></span><span class="em-ring em-ring-2"></span><div class="em-blob">';
@@ -1449,12 +1449,12 @@ class PortfolioExportController extends Controller
         }
 
         if ($projects !== []) {
-            $html .= '<section id="portfolio" class="em-projects em-section"><div class="em-orb em-orb-a em-opacity-25"></div><div class="em-hero-grid"></div><div class="em-container em-projects-content"><div class="em-reveal em-section-intro"><span class="em-section-tag">Selected projects</span>';
-            if (! empty($portfolio['projects_title'])) {
-                $html .= '<h2 class="display em-section-title">'.$escape($portfolio['projects_title']).'</h2>';
+            $html .= '<section id="projects" class="em-projects em-section"><div class="em-orb em-orb-a em-opacity-25"></div><div class="em-hero-grid"></div><div class="em-container em-projects-content"><div class="em-reveal em-section-intro"><span class="em-section-tag">Selected projects</span>';
+            if (! empty($projectContent['projects_title'])) {
+                $html .= '<h2 class="display em-section-title">'.$escape($projectContent['projects_title']).'</h2>';
             }
-            if (! empty($portfolio['projects_subtitle'])) {
-                $html .= '<p class="em-section-subtitle">'.$escape($portfolio['projects_subtitle']).'</p>';
+            if (! empty($projectContent['projects_subtitle'])) {
+                $html .= '<p class="em-section-subtitle">'.$escape($projectContent['projects_subtitle']).'</p>';
             }
             $html .= '</div>';
             if ($showFilters) {
@@ -1570,10 +1570,7 @@ class PortfolioExportController extends Controller
         $about = $section('about');
         $journey = $section('journey');
         $skills = $section('skills');
-        $portfolio = $section('portfolio');
-        if ($portfolio === []) {
-            $portfolio = $section('projects');
-        }
+        $projectContent = $section('projects');
         $contact = $section('contact');
         $journeyItems = array_values(array_filter($this->items($journey['journey_list'] ?? []), static fn (array $item): bool => ! empty($item['title']) || ! empty($item['role']) || ! empty($item['company']) || ! empty($item['institution']) || ! empty($item['period']) || ! empty($item['description'])
         ));
@@ -1595,7 +1592,7 @@ class PortfolioExportController extends Controller
             $skillItems[] = ['name' => trim($name), 'percent' => $percent, 'label' => $label];
         }
         $projects = [];
-        foreach ($this->items($portfolio['projects_list'] ?? $portfolio['projects'] ?? []) as $project) {
+        foreach ($this->items($projectContent['projects_list'] ?? $projectContent['projects'] ?? []) as $project) {
             $projectTitle = $project['title'] ?? $project['name'] ?? null;
             if (! is_string($projectTitle) || trim($projectTitle) === '') {
                 continue;
@@ -1667,14 +1664,14 @@ class PortfolioExportController extends Controller
         $showAbout = $hasContent($about);
         $showJourney = $journeyItems !== [];
         $showSkills = $hasContent($skills) || $skillItems !== [];
-        $showProjects = $hasContent($portfolio) || $projects !== [];
+        $showProjects = $hasContent($projectContent) || $projects !== [];
         $showContact = $hasContent($contact) || $formReady;
         $navLinks = [];
         foreach ([
             ['about', 'About', $showAbout],
             ['journey', 'Journey', $showJourney],
             ['skills', 'Skills', $showSkills],
-            ['portfolio', 'Work', $showProjects],
+            ['projects', 'Work', $showProjects],
         ] as [$id, $label, $visible]) {
             if ($visible) {
                 $navLinks[] = ['id' => $id, 'label' => $label];
@@ -1880,11 +1877,11 @@ class PortfolioExportController extends Controller
         }
 
         if ($showProjects) {
-            $html .= '<section id="portfolio" class="ie-projects"><div class="ie-section-inner"><div data-reveal class="ie-section-heading">';
-            if (! empty($portfolio['projects_title'])) {
-                $html .= '<h2 class="ie-serif ie-h2">'.$escape($portfolio['projects_title']).'</h2>';
+            $html .= '<section id="projects" class="ie-projects"><div class="ie-section-inner"><div data-reveal class="ie-section-heading">';
+            if (! empty($projectContent['projects_title'])) {
+                $html .= '<h2 class="ie-serif ie-h2">'.$escape($projectContent['projects_title']).'</h2>';
             }
-            $projectSubtitle = $portfolio['projects_subtitle'] ?? $portfolio['projects_description'] ?? '';
+            $projectSubtitle = $projectContent['projects_subtitle'] ?? $projectContent['projects_description'] ?? '';
             if ($projectSubtitle !== '') {
                 $html .= '<p>'.$escape($projectSubtitle).'</p>';
             }
@@ -2093,7 +2090,7 @@ class PortfolioExportController extends Controller
             return '';
         }
 
-        $html = '<section class="content-section" id="portfolio"><div class="section-heading">';
+        $html = '<section class="content-section" id="projects"><div class="section-heading">';
         $html .= '<p class="eyebrow">'.$escape($projects['projects_subtitle'] ?? 'Selected work').'</p>';
         $html .= '<h2>'.$escape($projects['projects_title'] ?? 'Projects').'</h2></div>';
         $categories = array_values(array_unique(array_filter(array_map(

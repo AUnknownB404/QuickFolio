@@ -32,7 +32,7 @@ const hero = computed(() => props.content?.header || {});
 const about = computed(() => props.content?.about || {});
 const journey = computed(() => props.content?.journey || {});
 const skills = computed(() => props.content?.skills || {});
-const portfolio = computed(() => props.content?.portfolio || props.content?.projects || {});
+const projectSection = computed(() => props.content?.projects || {});
 const contact = computed(() => props.content?.contact || {});
 const googleForm = computed<GoogleFormIntegration | null>(() => {
     const integration = props.portfolio;
@@ -66,7 +66,7 @@ const onSubmit = (event: Event) => {
     }, 700);
 };
 
-const allProjects = computed(() => portfolio.value.projects_list || portfolio.value.projects || []);
+const allProjects = computed(() => projectSection.value.projects_list || projectSection.value.projects || []);
 
 const categories = computed(() => {
     const set = new Set<string>();
@@ -86,7 +86,7 @@ const navLinks = computed(() => {
     if (about.value.about_title || about.value.about_description) links.push({ href: '#about', label: 'About' });
     if (journey.value.journey_list?.length) links.push({ href: '#journey', label: 'Experience' });
     if (skills.value.skills_list?.length) links.push({ href: '#skills', label: 'Skills' });
-    if (allProjects.value.length) links.push({ href: '#portfolio', label: 'Projects' });
+    if (allProjects.value.length) links.push({ href: '#projects', label: 'Projects' });
     links.push({ href: '#contact', label: 'Contact' });
     return links;
 });
@@ -296,7 +296,7 @@ onBeforeUnmount(() => {
                     </p>
 
                     <div v-if="hero.hero_cta_primary_text" class="hero-in flex flex-wrap items-center gap-4 pt-2" style="--d: 1s">
-                        <a :href="hero.hero_cta_primary_url || '#portfolio'" class="btn-glow group relative inline-flex items-center gap-3 px-8 py-4 rounded-full bg-[#5CF0BD] text-[#04201A] font-semibold text-sm tracking-wide transition-transform duration-300 hover:-translate-y-0.5">
+                        <a :href="hero.hero_cta_primary_url || '#projects'" class="btn-glow group relative inline-flex items-center gap-3 px-8 py-4 rounded-full bg-[#5CF0BD] text-[#04201A] font-semibold text-sm tracking-wide transition-transform duration-300 hover:-translate-y-0.5">
                             <span>{{ hero.hero_cta_primary_text }}</span>
                             <svg class="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
                         </a>
@@ -478,15 +478,15 @@ onBeforeUnmount(() => {
         </section>
 
         <!-- Portfolio -->
-        <section v-if="allProjects.length" id="portfolio" class="min-h-screen min-h-[100svh] flex flex-col justify-center relative px-6 py-28 bg-[#05201B] overflow-hidden border-t border-white/5">
+        <section v-if="allProjects.length" id="projects" class="min-h-screen min-h-[100svh] flex flex-col justify-center relative px-6 py-28 bg-[#05201B] overflow-hidden border-t border-white/5">
             <div class="orb orb-a opacity-25"></div>
             <div class="absolute inset-0 hero-grid pointer-events-none"></div>
 
             <div class="max-w-7xl mx-auto w-full space-y-14 relative z-10">
                 <div v-reveal class="rv text-center space-y-4 max-w-2xl mx-auto">
                     <span class="section-tag">Selected projects</span>
-                    <h2 v-if="portfolio.projects_title" class="display text-4xl sm:text-6xl font-bold tracking-[-0.025em] leading-[1.05]">{{ portfolio.projects_title }}</h2>
-                    <p v-if="portfolio.projects_subtitle" class="text-[#A9C9BF] text-base sm:text-lg">{{ portfolio.projects_subtitle }}</p>
+                    <h2 v-if="projectSection.projects_title" class="display text-4xl sm:text-6xl font-bold tracking-[-0.025em] leading-[1.05]">{{ projectSection.projects_title }}</h2>
+                    <p v-if="projectSection.projects_subtitle" class="text-[#A9C9BF] text-base sm:text-lg">{{ projectSection.projects_subtitle }}</p>
                 </div>
 
                 <div v-if="categories.length > 2" v-reveal class="rv flex flex-wrap justify-center gap-2.5">
