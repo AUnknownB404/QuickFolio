@@ -75,14 +75,14 @@ class TemplateController extends Controller
                 'hero_greeting' => 'Hello, World 👋',
                 'hero_name' => 'Akash Hossen',
                 'hero_role' => 'Senior UI/UX & Full-Stack Engineer',
-                'hero_description' => `I'm Md Akash Hossen, a Software Engineering student at Daffodil International University and an aspiring full-stack developer. I build practical web applications with PHP, Laravel, Vue.js, JavaScript, and MySQL, focusing on clear interfaces and useful functionality.`,
+                'hero_description' => 'I’m Md Akash Hossen, a Software Engineering student at Daffodil International University and an aspiring full-stack developer. I build practical web applications with PHP, Laravel, Vue.js, JavaScript, and MySQL, focusing on clear interfaces and useful functionality.',
                 'hero_image' => 'https://pub-3e54a7c219cc4b1c8b8faf9ad3427681.r2.dev/Demo/Hero.png',
                 'hero_cta_primary_text' => 'Explore Works',
                 'hero_cta_primary_url' => '#projects',
             ],
             'about' => [
                 'about_title' => 'I build useful web products from idea to implementation.',
-                'about_description' => `I'm a Software Engineering student and full-stack development learner. My work so far includes CRUD-based systems, authentication, database-driven workflows, and responsive interfaces using Laravel, Vue 3, Inertia.js, and Tailwind CSS.`,
+                'about_description' => 'I\'m a Software Engineering student and full-stack development learner. My work so far includes CRUD-based systems, authentication, database-driven workflows, and responsive interfaces using Laravel, Vue 3, Inertia.js, and Tailwind CSS.',
                 'about_image' => 'https://pub-3e54a7c219cc4b1c8b8faf9ad3427681.r2.dev/Demo/About.png',
                 'about_cv_file' => 'https://pub-3e54a7c219cc4b1c8b8faf9ad3427681.r2.dev/Demo/Md_Akash_Hossen_CV.pdf',
             ],
@@ -110,7 +110,7 @@ class TemplateController extends Controller
                 ],
             ],
             'projects' => [
-                'projects_title' => `Selected work I'm proud of.`,
+                'projects_title' => 'Selected work I\'m proud of.'  ,
                 'projects_subtitle' => 'A curated showcase of recent production builds and design systems.',
                 'projects_description' => 'A selection of digital products built with thoughtful design and reliable engineering.',
                 'projects_list' => [
@@ -132,7 +132,7 @@ class TemplateController extends Controller
             ],
             'contact' => [
                 'contact_title' => 'Get in touch.',
-                'contact_description' => `Have an idea, a question, or a project in mind? Send a message and I'll get back to you soon.`,
+                'contact_description' => 'Have an idea, a question, or a project in mind? Send a message and I\'ll get back to you soon.',
                 'contact_email' => 'mdakashhossen.dev@gmail.com',
                 'contact_phone' => '+880 19732-07198',
                 'contact_location' => 'Dhaka, Bangladesh',
