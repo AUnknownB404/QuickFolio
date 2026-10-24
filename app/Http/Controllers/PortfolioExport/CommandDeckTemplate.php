@@ -221,7 +221,14 @@ trait CommandDeckTemplate
                 $highlightTitle = $clean($item);
                 $highlightDescription = null;
             } elseif (is_array($item)) {
-                $highlightTitle = $clean($item['title'] ?? $item['label'] ?? $item['text'] ?? $item['name'] ?? $item['value'] ?? null);
+                $highlightTitle = $clean($item['title'] ?? $item['text'] ?? $item['name'] ?? null);
+                if ($highlightTitle === null) {
+                    $legacyParts = array_filter([
+                        $clean($item['value'] ?? null),
+                        $clean($item['label'] ?? null),
+                    ], static fn (?string $part): bool => $part !== null);
+                    $highlightTitle = $legacyParts === [] ? null : implode(' ', $legacyParts);
+                }
                 $highlightDescription = $clean($item['description'] ?? null);
             } else {
                 continue;
@@ -363,7 +370,6 @@ trait CommandDeckTemplate
         $location = $text($contact, 'contact_location');
         $emailHref = $email !== null ? $this->safeUrl('mailto:'.$email, '') : '';
         $phoneHref = $phone !== null ? $this->safeUrl('tel:'.preg_replace('/[^+\d]/', '', $phone), '') : '';
-        $contactLabel = $text($contact, 'contact_subtitle') ?? $text($contact, 'contact_title') ?? '';
         $formReady = $flag($contact, 'contact_form_enabled', true) && $googleForm !== null;
 
         $navDefs = [
@@ -408,7 +414,7 @@ trait CommandDeckTemplate
         }
         if ($hasContact) {
             $contactTitle = $text($contact, 'contact_title') ?? $email;
-            $html .= '<button type="button" class="cd-rail-btn" data-active="false" data-view-target="contact" data-view-label="'.$escape($contactLabel).'"'
+            $html .= '<button type="button" class="cd-rail-btn" data-active="false" data-view-target="contact" data-view-label="'.$escape('Get in touch').'"'
                 .($contactTitle !== null ? ' title="'.$escape($contactTitle).'"' : '')
                 .' aria-label="'.$escape($contactTitle ?? 'Contact').'">'.$icon('mail', 18).'</button>';
         }
@@ -446,7 +452,7 @@ trait CommandDeckTemplate
         $html .= '<div class="cd-tabs" role="tablist" aria-label="Views">'.$tabs.'</div>';
         $html .= '<div class="cd-top-right"><span class="cd-mono cd-pct" data-scroll-pct aria-hidden="true">000%</span>';
         if ($hasContact) {
-            $html .= '<a href="#contact" class="cd-btn cd-btn-primary cd-btn-sm" data-view-target="contact">'.$escape($contactLabel !== '' ? $contactLabel : ($email ?? '')).$icon('arrow-up-right', 14, 'cd-arrow').'</a>';
+            $html .= '<a href="#contact" class="cd-btn cd-btn-primary cd-btn-sm" data-view-target="contact">'.$escape('Contact me').$icon('arrow-up-right', 14, 'cd-arrow').'</a>';
         }
         $html .= '</div></div>';
         $html .= '<div class="cd-tabs-mobile" role="tablist" aria-label="Views">'.$tabs.'</div></header>';
@@ -514,19 +520,6 @@ trait CommandDeckTemplate
                 $html .= '</div>';
             }
             $html .= '</article>';
-
-            if ($highlights !== []) {
-                $html .= '<aside class="cd-stats cd-span-4">';
-                foreach (array_slice($highlights, 0, 3) as $index => $highlight) {
-                    $html .= '<article data-reveal style="--d: '.(($index + 1) * 90).'ms" class="cd-win cd-stat"><div class="cd-stat-head"><span class="cd-mono cd-stat-num">'.$pad($index + 1).'</span>'.$icon('activity', 16).'</div>';
-                    $html .= '<p class="cd-display cd-stat-value">'.$escape($highlight['title']).'</p>';
-                    if ($highlight['description'] !== null) {
-                        $html .= '<p class="cd-stat-desc">'.$escape($highlight['description']).'</p>';
-                    }
-                    $html .= '<span class="cd-spark" aria-hidden="true"><i></i></span></article>';
-                }
-                $html .= '</aside>';
-            }
             $html .= '</section>';
         }
 
@@ -558,12 +551,11 @@ trait CommandDeckTemplate
             }
             if ($cvFile !== '' || $aboutCta !== null) {
                 $html .= '<div class="cd-actions cd-actions-lg">';
-                if ($cvFile !== '') {
-                    $cvLabel = $aboutCta['text'] ?? 'Download CV';
-                    $html .= '<a href="'.$escape($cvFile).'" download target="_blank" rel="noopener" class="cd-btn cd-btn-primary">'.$icon('download', 16).$escape($cvLabel).'</a>';
-                }
                 if ($aboutCta !== null) {
                     $html .= '<a href="'.$url($aboutCta['url']).'" class="cd-btn '.($cvFile !== '' ? 'cd-btn-ghost' : 'cd-btn-primary').'" data-jump>'.$escape($aboutCta['text']).$icon('arrow-up-right', 16, 'cd-arrow').'</a>';
+                }else if ($cvFile !== '') {
+                    $cvLabel = $aboutCta['text'] ?? 'Download CV';
+                    $html .= '<a href="'.$escape($cvFile).'" download target="_blank" rel="noopener" class="cd-btn cd-btn-primary">'.$icon('download', 16).$escape($cvLabel).'</a>';
                 }
                 $html .= '</div>';
             }

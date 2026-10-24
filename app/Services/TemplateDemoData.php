@@ -14,7 +14,10 @@ class TemplateDemoData
             'content' => [
                 'navbar' => [
                     'logo_text' => $template->name,
+                    'logo_image' => 'https://'.self::ASSET_HOST.'/Demo/Logo%20Green.png',
                     'logo_url' => 'https://'.self::ASSET_HOST.'/Demo/Logo%20Green.png',
+                    'sticky_nav' => true,
+                    'show_logo' => true,
                     'nav_links' => [
                         ['label' => 'About', 'url' => '#about'],
                         ['label' => 'Journey', 'url' => '#journey'],
@@ -31,14 +34,30 @@ class TemplateDemoData
                     'hero_role' => 'Senior UI/UX & Full-Stack Engineer',
                     'hero_description' => 'I’m Md Akash Hossen, a Software Engineering student at Daffodil International University and an aspiring full-stack developer. I build practical web applications with PHP, Laravel, Vue.js, JavaScript, and MySQL, focusing on clear interfaces and useful functionality.',
                     'hero_image' => 'https://'.self::ASSET_HOST.'/Demo/Hero.png',
+                    'hero_background_image' => null,
                     'hero_cta_primary_text' => 'Explore Works',
                     'hero_cta_primary_url' => '#projects',
+                    'hero_cta_secondary_text' => 'Let’s Connect',
+                    'hero_cta_secondary_url' => '#contact',
+                    'hero_social_links' => [
+                        ['label' => 'GitHub', 'url' => 'https://github.com/akashhossen', 'icon' => 'github'],
+                        ['label' => 'LinkedIn', 'url' => 'https://www.linkedin.com/', 'icon' => 'linkedin'],
+                        ['label' => 'Facebook', 'url' => 'https://www.facebook.com/', 'icon' => 'facebook'],
+                    ],
                 ],
                 'about' => [
                     'about_title' => 'I build useful web products from idea to implementation.',
+                    'about_subtitle' => 'A little about my background and how I work.',
                     'about_description' => 'I\'m a Software Engineering student and full-stack development learner. My work so far includes CRUD-based systems, authentication, database-driven workflows, and responsive interfaces using Laravel, Vue 3, Inertia.js, and Tailwind CSS.',
                     'about_image' => 'https://'.self::ASSET_HOST.'/Demo/About.png',
                     'about_cv_file' => 'https://'.self::ASSET_HOST.'/Demo/Md_Akash_Hossen_CV.pdf',
+                    'about_highlights' => [
+                        ['label' => 'Projects Completed', 'value' => '12+'],
+                        ['label' => 'Technologies', 'value' => '8+'],
+                        ['label' => 'Learning Mindset', 'value' => 'Always'],
+                    ],
+                    'about_cta_text' => 'Download My CV',
+                    'about_cta_url' => 'https://'.self::ASSET_HOST.'/Demo/Md_Akash_Hossen_CV.pdf',
                 ],
                 'journey' => [
                     'journey_title' => 'My journey so far.',
@@ -52,6 +71,7 @@ class TemplateDemoData
                 ],
                 'skills' => [
                     'skills_title' => 'Technical Expertise',
+                    'skills_subtitle' => 'Tools and technologies I use to turn ideas into working products.',
                     'skills_description' => 'What I work with.',
                     'skills_list' => [
                         ['label' => 'Vue 3 & Inertia', 'percent' => 95],
@@ -62,6 +82,8 @@ class TemplateDemoData
                         ['label' => 'MySQL', 'percent' => 78],
                         ['label' => 'UI/UX Design', 'percent' => 85],
                     ],
+                    'skills_show_level' => true,
+                    'skills_show_icon' => true,
                 ],
                 'projects' => [
                     'projects_title' => 'Selected work I\'m proud of.',
@@ -74,6 +96,7 @@ class TemplateDemoData
                         ['title' => 'AI Tourism Platform Concept', 'category' => 'System Design', 'image' => 'https://'.self::ASSET_HOST.'/Demo/Random.png', 'url' => 'https://example.com'],
                         ['title' => 'Library Management System', 'category' => 'Web App', 'image' => 'https://'.self::ASSET_HOST.'/Demo/library.jpg', 'url' => 'https://example.com'],
                     ],
+                    'projects_show_featured' => true,
                 ],
                 'services' => [
                     'services_title' => 'What I Can Do For You',
@@ -86,11 +109,17 @@ class TemplateDemoData
                 ],
                 'contact' => [
                     'contact_title' => 'Get in touch.',
+                    'contact_subtitle' => 'Have a project in mind? Let’s build something useful together.',
                     'contact_description' => 'Have an idea, a question, or a project in mind? Send a message and I\'ll get back to you soon.',
                     'contact_email' => 'mdakashhossen.dev@gmail.com',
                     'contact_phone' => '+880 19732-07198',
                     'contact_location' => 'Dhaka, Bangladesh',
                     'contact_form_enabled' => true,
+                    'contact_social_links' => [
+                        ['label' => 'GitHub', 'url' => 'https://github.com/akashhossen', 'icon' => 'github'],
+                        ['label' => 'LinkedIn', 'url' => 'https://www.linkedin.com/', 'icon' => 'linkedin'],
+                        ['label' => 'Facebook', 'url' => 'https://www.facebook.com/', 'icon' => 'facebook'],
+                    ],
                 ],
             ],
             'portfolio' => [

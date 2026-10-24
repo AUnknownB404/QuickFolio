@@ -553,8 +553,7 @@ const year = new Date().getFullYear();
                     </li>
                 </ul>
 
-                <a v-if="has('contact')" href="#contact" class="ps-btn ps-btn-primary !px-5 !py-2.5 !text-sm" @click="onNavClick($event, '#contact')">
-                    {{ text('contact', 'contact_subtitle') ?? text('contact', 'contact_title') ?? email }}<ArrowUpRight class="ps-arrow h-4 w-4" />
+                <a v-if="has('contact')" href="#contact" class="ps-btn ps-btn-primary !px-5 !py-2.5 !text-sm" @click="onNavClick($event, '#contact')">Contact me<ArrowUpRight class="ps-arrow h-4 w-4" />
                 </a>
                 <span v-else />
             </nav>

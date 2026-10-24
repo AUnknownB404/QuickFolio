@@ -8,6 +8,8 @@ use App\Http\Controllers\PortfolioExport\CommandDeckTemplate;
 use App\Http\Controllers\PortfolioExport\DarkOrangeDesignerTemplate;
 use App\Http\Controllers\PortfolioExport\IvoryEditorialTemplate;
 use App\Http\Controllers\PortfolioExport\EmeraldMinimalistTemplate;
+use App\Http\Controllers\PortfolioExport\NebulaGlassTemplate;
+use App\Http\Controllers\PortfolioExport\NewsprintTemplate;
 use App\Http\Controllers\PortfolioExport\PortfolioExportScripts;
 use App\Models\Portfolio;
 use App\Models\Template;
@@ -32,6 +34,8 @@ class PortfolioExportController extends Controller
     use IvoryEditorialTemplate;
     use EmeraldMinimalistTemplate;
     use PortfolioExportScripts;
+    use NebulaGlassTemplate;
+    use NewsprintTemplate;
 
     private const TEMPLATE_THEMES = [
         'emerald-minimalist' => 'emerald',
@@ -39,6 +43,8 @@ class PortfolioExportController extends Controller
         'ivory-editorial' => 'ivory',
         'bento-grid' => 'bento',
         'cobalt-brutalist' => 'cobalt',
+        'nebula-glass' => 'nebula',
+        'newsprint' => 'newsprint',
     ];
 
     private const TEMPLATE_RENDERERS = [
@@ -66,9 +72,33 @@ class PortfolioExportController extends Controller
             'page' => 'renderCommandDeckPage',
             'styles' => 'commandDeckStyles',
         ],
+        'paper-stack' => [
+            'page' => 'renderPaperStackPage',
+            'styles' => 'paperStackStyles',
+        ],
         'nebula-glass' => [
             'page' => 'renderNebulaGlassPage',
             'styles' => 'nebulaGlassStyles',
+        ],
+        'newsprint'=> [
+            'page'=> 'renderNewsprintPage',
+            'styles'=> 'newsprintStyles',
+        ],
+        'stream-bands'=> [
+            'page'=> 'renderStreamBandsPage',
+            'styles'=> 'streamBandsStyles',
+        ],
+        'swiss-grid'=> [
+            'page'=> 'renderSwissGridPage',
+            'styles'=> 'swissGridStyles',
+        ],
+        'swiss-signal'=> [
+            'page'=> 'renderSwissSignalPage',
+            'styles'=> 'swissSignalStyles',
+        ],
+        'tidepool'=> [
+            'page'=> 'renderTidepoolPage',
+            'styles'=> 'tidepoolStyles',
         ],
     ];
 
@@ -99,7 +129,7 @@ class PortfolioExportController extends Controller
         $assets = $this->collectAssets($content, $portfolio);
         $brandFiles = $this->brandFiles();
         $googleForm = null;
-        if (in_array($templateSlug, ['bento-grid', 'cobalt-brutalist', 'command-deck', 'dark-orange-designer', 'emerald-minimalist', 'ivory-editorial', 'nebula-glass'], true)) {
+        if (in_array($templateSlug, ['bento-grid', 'cobalt-brutalist', 'command-deck', 'dark-orange-designer', 'emerald-minimalist', 'ivory-editorial', 'nebula-glass', 'newsprint', 'orbit-folio', 'paper-stack', 'stream-bands', 'swiss-grid', 'swiss-signal', 'tidepool'], true)) {
             $responseUrl = GoogleFormIntegration::responseUrl($portfolio->google_form_url);
             $entryIds = [
                 $portfolio->google_form_name_entry,
@@ -138,7 +168,7 @@ class PortfolioExportController extends Controller
         $portfolio = $demo['portfolio'];
         $googleForm = null;
 
-        if (in_array($templateSlug, ['bento-grid', 'cobalt-brutalist', 'command-deck', 'dark-orange-designer', 'emerald-minimalist', 'ivory-editorial', 'nebula-glass'], true)) {
+        if (in_array($templateSlug, ['bento-grid', 'cobalt-brutalist', 'command-deck', 'dark-orange-designer', 'emerald-minimalist', 'ivory-editorial', 'nebula-glass', 'newsprint', 'orbit-folio', 'paper-stack', 'stream-bands', 'swiss-grid', 'swiss-signal', 'tidepool'], true)) {
             $responseUrl = GoogleFormIntegration::responseUrl($portfolio['google_form_url'] ?? null);
             $entryIds = [
                 $portfolio['google_form_name_entry'] ?? null,

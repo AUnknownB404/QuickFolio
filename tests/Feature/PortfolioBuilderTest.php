@@ -236,6 +236,38 @@ class PortfolioBuilderTest extends TestCase
         }
     }
 
+    public function test_about_highlights_are_saved_as_repeatable_string_values()
+    {
+        $this->seed();
+        $user = User::factory()->create();
+        $template = Template::where('slug', 'emerald-minimalist')->firstOrFail();
+        $portfolio = app(PortfolioService::class)->createForUser($user, $template, 'About Highlights');
+        $aboutSection = $portfolio->sections()->where('section_key', 'about')->firstOrFail();
+        $highlights = FieldDefinition::where('field_key', 'about_highlights')->firstOrFail();
+
+        $this->assertSame('array', $highlights->data_type);
+        $this->assertTrue($highlights->is_repeatable);
+
+        $this->actingAs($user)->patch(route('portfolios.update', $portfolio), [
+            'sections' => [
+                [
+                    'id' => $aboutSection->id,
+                    'is_enabled' => true,
+                    'field_values' => [
+                        ['field_definition_id' => $highlights->id, 'value' => ['5+ years of experience', 'Accessible systems']],
+                    ],
+                ],
+            ],
+        ])->assertRedirect();
+
+        $savedValue = $aboutSection->fieldValues()
+            ->where('field_definition_id', $highlights->id)
+            ->firstOrFail()
+            ->value;
+
+        $this->assertSame(['5+ years of experience', 'Accessible systems'], $savedValue);
+    }
+
     public function test_cta_url_string_accepts_in_page_fragment_links()
     {
         $this->seed();
@@ -878,6 +910,48 @@ class PortfolioBuilderTest extends TestCase
                 'editorial-portrait-image',
                 $archive->getFromName('assets/'.substr(hash('sha256', $assetPath), 0, 12).'-editorial-portrait.png')
             );
+        } finally {
+            $archive->close();
+            unlink($archivePath);
+        }
+    }
+
+    public function test_command_deck_download_renders_repeatable_string_highlights()
+    {
+        $this->seed();
+        $user = User::factory()->create();
+        $template = Template::where('slug', 'command-deck')->firstOrFail();
+        $portfolio = app(PortfolioService::class)->createForUser($user, $template, 'Command Deck Highlights');
+        $about = $portfolio->sections()->where('section_key', 'about')->firstOrFail();
+        $highlights = FieldDefinition::where('field_key', 'about_highlights')->firstOrFail();
+
+        PortfolioFieldValue::updateOrCreate(
+            [
+                'portfolio_section_id' => $about->id,
+                'field_definition_id' => $highlights->id,
+            ],
+            ['value' => [
+                '10+ years of experience',
+                'Accessible systems',
+                ['value' => '5+', 'label' => 'years of experience'],
+            ]]
+        );
+
+        $response = $this->actingAs($user)->get(route('portfolios.download', $portfolio));
+        $response->assertDownload("portfolio-{$portfolio->slug}.zip");
+
+        $archivePath = tempnam(sys_get_temp_dir(), 'portfolio_export_test_');
+        $this->assertNotFalse($archivePath);
+        file_put_contents($archivePath, $response->streamedContent());
+
+        $archive = new ZipArchive;
+        $this->assertTrue($archive->open($archivePath));
+        try {
+            $html = $archive->getFromName('index.html');
+            $this->assertIsString($html);
+            $this->assertStringContainsString('10+ years of experience', $html);
+            $this->assertStringContainsString('Accessible systems', $html);
+            $this->assertStringContainsString('5+ years of experience', $html);
         } finally {
             $archive->close();
             unlink($archivePath);

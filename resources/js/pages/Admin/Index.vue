@@ -184,9 +184,9 @@ const runSearch = () => {
 <template>
     <Head title="Admin panel — quickFolio" />
 
-    <div class="min-h-screen bg-[#F5F7F6] text-slate-900">
-        <aside class="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r border-slate-200 bg-white lg:flex">
-            <Link :href="route('dashboard')" class="flex h-20 items-center border-b border-slate-100 px-7">
+    <div class="min-h-screen bg-[#F5F7F6] text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100">
+        <aside class="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 lg:flex">
+            <Link :href="route('dashboard')" class="flex h-20 items-center border-b border-slate-100 px-7 dark:border-slate-800">
                 <AppLogo size="md" />
             </Link>
             <div class="px-5 pt-8">
@@ -194,21 +194,21 @@ const runSearch = () => {
                 <nav class="mt-3 space-y-1">
                     <button
                         class="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition"
-                        :class="activeTab === 'users' ? 'bg-emerald-50 text-emerald-900' : 'text-slate-500 hover:bg-slate-50'"
+                        :class="activeTab === 'users' ? 'bg-emerald-50 text-emerald-900 dark:bg-emerald-950/70 dark:text-emerald-300' : 'text-slate-500 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800'"
                         @click="activeTab = 'users'"
                     >
                         <Users class="h-4 w-4" /> Users
                     </button>
                     <button
                         class="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition"
-                        :class="activeTab === 'templates' ? 'bg-emerald-50 text-emerald-900' : 'text-slate-500 hover:bg-slate-50'"
+                        :class="activeTab === 'templates' ? 'bg-emerald-50 text-emerald-900 dark:bg-emerald-950/70 dark:text-emerald-300' : 'text-slate-500 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800'"
                         @click="activeTab = 'templates'"
                     >
                         <WandSparkles class="h-4 w-4" /> Templates
                     </button>
                 </nav>
             </div>
-            <div class="mt-auto border-t border-slate-100 p-5">
+            <div class="mt-auto border-t border-slate-100 p-5 dark:border-slate-800">
                 <Link
                     :href="route('dashboard')"
                     class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-slate-500 hover:bg-slate-50"
@@ -228,7 +228,7 @@ const runSearch = () => {
         </aside>
 
         <main class="lg:pl-64">
-            <header class="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-slate-200 bg-white/90 px-5 backdrop-blur sm:px-8">
+            <header class="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-slate-200 bg-white/90 px-5 backdrop-blur dark:border-slate-800 dark:bg-slate-900/90 sm:px-8">
                 <div class="flex items-center gap-3">
                     <span class="grid h-9 w-9 place-items-center rounded-lg bg-emerald-50 text-emerald-800 lg:hidden"
                         ><ShieldCheck class="h-5 w-5"
@@ -270,28 +270,28 @@ const runSearch = () => {
                 </section>
 
                 <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
                         <p class="text-sm font-medium text-slate-500">Total users</p>
                         <div class="mt-4 flex items-end justify-between">
                             <p class="text-3xl font-bold">{{ stats.users.toLocaleString() }}</p>
                             <span class="rounded-xl bg-blue-50 p-2.5 text-blue-700"><Users class="h-5 w-5" /></span>
                         </div>
                     </article>
-                    <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
                         <p class="text-sm font-medium text-slate-500">All templates</p>
                         <div class="mt-4 flex items-end justify-between">
                             <p class="text-3xl font-bold">{{ stats.templates.toLocaleString() }}</p>
                             <span class="rounded-xl bg-violet-50 p-2.5 text-violet-700"><WandSparkles class="h-5 w-5" /></span>
                         </div>
                     </article>
-                    <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
                         <p class="text-sm font-medium text-slate-500">Published templates</p>
                         <div class="mt-4 flex items-end justify-between">
                             <p class="text-3xl font-bold">{{ stats.publishedTemplates.toLocaleString() }}</p>
                             <span class="rounded-xl bg-emerald-50 p-2.5 text-emerald-700"><ShieldCheck class="h-5 w-5" /></span>
                         </div>
                     </article>
-                    <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
                         <p class="text-sm font-medium text-slate-500">Portfolios created</p>
                         <div class="mt-4 flex items-end justify-between">
                             <p class="text-3xl font-bold">{{ stats.portfolios.toLocaleString() }}</p>
@@ -300,19 +300,19 @@ const runSearch = () => {
                     </article>
                 </section>
 
-                <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                    <div class="flex flex-col gap-4 border-b border-slate-100 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+                <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                    <div class="flex flex-col gap-4 border-b border-slate-100 px-5 py-5 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between sm:px-7">
                         <div class="flex gap-2">
                             <button
                                 @click="activeTab = 'users'"
-                                :class="activeTab === 'users' ? 'bg-emerald-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                                :class="activeTab === 'users' ? 'bg-emerald-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'"
                                 class="rounded-lg px-4 py-2 text-sm font-semibold transition"
                             >
                                 Users
                             </button>
                             <button
                                 @click="activeTab = 'templates'"
-                                :class="activeTab === 'templates' ? 'bg-emerald-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                                :class="activeTab === 'templates' ? 'bg-emerald-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'"
                                 class="rounded-lg px-4 py-2 text-sm font-semibold transition"
                             >
                                 Templates
@@ -322,12 +322,12 @@ const runSearch = () => {
                             <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                             <input
                                 v-model="search"
-                                class="w-full rounded-lg border-input bg-background py-2 pl-9 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus:border-emerald-700 focus:ring-emerald-700 sm:w-64"
+                                class="admin-field w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-9 pr-12 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 transition focus:border-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-700/15 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/20 sm:w-64"
                                 :placeholder="activeTab === 'users' ? 'Search users' : 'Search templates'"
                             />
                             <button
                                 type="submit"
-                                class="absolute right-2 top-1/2 -translate-y-1/2 rounded-md px-2 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-50"
+                                class="absolute right-2 top-1/2 -translate-y-1/2 rounded-md px-2 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-950"
                             >
                                 Go
                             </button>
@@ -336,7 +336,7 @@ const runSearch = () => {
 
                     <div v-if="activeTab === 'users'" class="overflow-x-auto">
                         <table class="w-full min-w-[760px] text-left">
-                            <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                            <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:bg-slate-800/70 dark:text-slate-400">
                                 <tr>
                                     <th class="px-7 py-4">User</th>
                                     <th class="px-5 py-4">Portfolios</th>
@@ -345,8 +345,8 @@ const runSearch = () => {
                                     <th class="px-7 py-4 text-right">Action</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-slate-100">
-                                <tr v-for="user in users.data" :key="user.id" class="hover:bg-slate-50/70">
+                            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                                <tr v-for="user in users.data" :key="user.id" class="hover:bg-slate-50/70 dark:hover:bg-slate-800/50">
                                     <td class="px-7 py-4">
                                         <div class="flex items-center gap-3">
                                             <span
@@ -364,7 +364,7 @@ const runSearch = () => {
                                     <td class="px-5 py-4">
                                         <select
                                             :value="user.role"
-                                            class="rounded-lg border-input bg-background py-1.5 pl-3 pr-8 text-xs font-semibold text-foreground focus:border-emerald-700 focus:ring-emerald-700"
+                                            class="admin-field rounded-lg border border-slate-300 bg-white py-2 pl-3 pr-8 text-xs font-semibold text-slate-900 focus:border-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-700/15 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/20"
                                             @change="updateRole(user, $event)"
                                         >
                                             <option value="user">User</option>
@@ -382,7 +382,7 @@ const runSearch = () => {
                                 </tr>
                             </tbody>
                         </table>
-                        <div class="flex items-center justify-between border-t border-slate-100 px-6 py-4">
+                        <div class="flex items-center justify-between border-t border-slate-100 px-6 py-4 dark:border-slate-800">
                             <p class="text-xs text-slate-500">{{ users.total }} accounts</p>
                             <div class="flex gap-1">
                                 <Link
@@ -404,8 +404,8 @@ const runSearch = () => {
                     </div>
 
                     <div v-else class="grid gap-5 p-5 sm:grid-cols-2 sm:p-7 xl:grid-cols-3">
-                        <article v-for="template in templates.data" :key="template.id" class="overflow-hidden rounded-xl border border-slate-200">
-                            <div class="relative aspect-[16/10] bg-slate-100">
+                        <article v-for="template in templates.data" :key="template.id" class="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
+                            <div class="relative aspect-[16/10] bg-slate-100 dark:bg-slate-800">
                                 <img
                                     v-if="template.thumbnail"
                                     :src="template.thumbnail"
@@ -489,22 +489,22 @@ const runSearch = () => {
             class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/50 p-4"
             @click.self="closeTemplateModal"
         >
-            <section class="my-8 w-full max-w-2xl rounded-2xl bg-white shadow-2xl">
-                <header class="flex items-center justify-between border-b border-slate-100 px-6 py-5">
+            <section class="my-8 w-full max-w-2xl rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-2xl dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                <header class="flex items-center justify-between border-b border-slate-100 px-6 py-5 dark:border-slate-800">
                     <div>
                         <p class="text-xs font-bold uppercase tracking-wider text-emerald-800">Marketplace</p>
                         <h2 class="mt-1 text-xl font-bold">{{ editingTemplate ? 'Edit template' : 'Create a template' }}</h2>
                     </div>
                     <button
                         :disabled="templateForm.processing"
-                        class="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                        class="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-100"
                         aria-label="Close"
                         @click="closeTemplateModal"
                     >
                         <X class="h-5 w-5" />
                     </button>
                 </header>
-                <form class="space-y-5 p-6" :aria-busy="templateForm.processing" @submit.prevent="saveTemplate">
+                <form class="space-y-5 p-6 [&_label]:text-slate-700 dark:[&_label]:text-slate-200 [&_option]:bg-white [&_option]:text-slate-900 dark:[&_option]:bg-slate-900 dark:[&_option]:text-slate-100" :aria-busy="templateForm.processing" @submit.prevent="saveTemplate">
                     <div class="grid gap-4 sm:grid-cols-2">
                         <label class="space-y-1.5 text-sm font-medium"
                             >Template name
@@ -512,7 +512,7 @@ const runSearch = () => {
                                 v-model="templateForm.name"
                                 required
                                 maxlength="255"
-                                class="w-full rounded-lg border-input bg-background text-sm text-foreground placeholder:text-muted-foreground focus:border-emerald-700 focus:ring-emerald-700"
+                                class="admin-field w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 transition focus:border-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-700/15 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/20"
                                 placeholder="e.g. Minimal Portfolio"
                             />
                             <p v-if="templateForm.errors.name" class="text-xs text-rose-600">{{ templateForm.errors.name }}</p>
@@ -522,7 +522,7 @@ const runSearch = () => {
                             <input
                                 v-model="templateForm.slug"
                                 maxlength="255"
-                                class="w-full rounded-lg border-input bg-background text-sm text-foreground placeholder:text-muted-foreground focus:border-emerald-700 focus:ring-emerald-700"
+                                class="admin-field w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 transition focus:border-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-700/15 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/20"
                                 placeholder="generated from the name if blank"
                             />
                             <p v-if="templateForm.errors.slug" class="text-xs text-rose-600">{{ templateForm.errors.slug }}</p>
@@ -531,7 +531,7 @@ const runSearch = () => {
                             >Category
                             <select
                                 v-model="templateForm.category_id"
-                                class="w-full rounded-lg border-input bg-background text-sm text-foreground focus:border-emerald-700 focus:ring-emerald-700"
+                                class="admin-field w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition focus:border-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-700/15 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/20"
                             >
                                 <option value="">No category</option>
                                 <option v-for="category in categories" :key="category.id" :value="category.id.toString()">{{ category.name }}</option>
@@ -543,7 +543,7 @@ const runSearch = () => {
                             <input
                                 v-model="templateForm.preview_url"
                                 type="text"
-                                class="w-full rounded-lg border-input bg-background text-sm text-foreground placeholder:text-muted-foreground focus:border-emerald-700 focus:ring-emerald-700"
+                                class="admin-field w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 transition focus:border-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-700/15 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/20"
                                 placeholder="https://example.com"
                             />
                             <p v-if="templateForm.errors.preview_url" class="text-xs text-rose-600">{{ templateForm.errors.preview_url }}</p>
@@ -555,7 +555,7 @@ const runSearch = () => {
                             v-model="templateForm.description"
                             rows="3"
                             maxlength="5000"
-                            class="w-full rounded-lg border-input bg-background text-sm text-foreground placeholder:text-muted-foreground focus:border-emerald-700 focus:ring-emerald-700"
+                            class="admin-field w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 transition focus:border-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-700/15 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/20"
                             placeholder="Describe what makes this template useful."
                         />
                         <p v-if="templateForm.errors.description" class="text-xs text-rose-600">{{ templateForm.errors.description }}</p>
@@ -566,7 +566,7 @@ const runSearch = () => {
                             <input
                                 type="file"
                                 accept="image/*"
-                                class="block w-full rounded-lg border border-input bg-background text-sm text-foreground file:mr-3 file:border-0 file:bg-muted file:px-3 file:py-2 file:text-foreground"
+                                class="admin-field block w-full rounded-xl border border-slate-300 bg-white text-sm text-slate-700 shadow-sm transition file:mr-3 file:border-0 file:bg-slate-100 file:px-3 file:py-2.5 file:font-semibold file:text-slate-700 hover:file:bg-slate-200 focus:border-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-700/15 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:file:bg-slate-800 dark:file:text-slate-100 dark:hover:file:bg-slate-700 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/20"
                                 @change="setThumbnail"
                             />
                             <p v-if="templateForm.errors.thumbnail" class="text-xs text-rose-600">{{ templateForm.errors.thumbnail }}</p>
@@ -586,11 +586,11 @@ const runSearch = () => {
                         />
                         Publish in the public marketplace
                     </label>
-                    <div class="flex justify-end gap-3 border-t border-slate-100 pt-5">
+                    <div class="flex justify-end gap-3 border-t border-slate-100 pt-5 dark:border-slate-800">
                         <button
                             type="button"
                             :disabled="templateForm.processing"
-                            class="rounded-lg px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                            class="rounded-lg px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
                             @click="closeTemplateModal"
                         >
                             Cancel
@@ -617,3 +617,28 @@ const runSearch = () => {
         </div>
     </div>
 </template>
+
+<style scoped>
+/* Keep native controls readable in both themes, including browser autofill. */
+.admin-field {
+    color-scheme: light;
+}
+
+:global(.dark) .admin-field {
+    color-scheme: dark;
+}
+
+.admin-field:focus-visible {
+    outline-offset: 2px;
+}
+
+.admin-field::placeholder {
+    opacity: 1;
+}
+
+.admin-field[type='file']::file-selector-button {
+    cursor: pointer;
+    border-radius: 0.5rem;
+    margin-right: 0.75rem;
+}
+</style>

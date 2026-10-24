@@ -242,11 +242,16 @@ const heroSecondary = computed(() => {
 // About
 const highlights = computed(() =>
     arr('about', 'about_highlights')
-        .map((h) =>
-            typeof h === 'string'
-                ? { title: clean(h) ?? '', description: undefined as string | undefined }
-                : { title: clean(h?.title ?? h?.label ?? h?.text ?? h?.name ?? h?.value) ?? '', description: clean(h?.description) },
-        )
+        .map((h) => {
+            if (typeof h === 'string') {
+                return { title: clean(h) ?? '', description: undefined as string | undefined };
+            }
+
+            const title = clean(h?.title ?? h?.text ?? h?.name)
+                ?? [clean(h?.value), clean(h?.label)].filter(Boolean).join(' ');
+
+            return { title, description: clean(h?.description) };
+        })
         .filter((h) => h.title),
 );
 const aboutCta = computed(() => {
@@ -609,7 +614,7 @@ const year = new Date().getFullYear();
                         <p v-if="logoText || heroName" class="cd-mono truncate text-[0.78rem] font-medium uppercase tracking-[0.1em]">{{ logoText ?? heroName }}</p>
                         <ChevronRight v-if="view !== 'overview' && (logoText || heroName)" class="h-3.5 w-3.5 shrink-0 text-[var(--muted)]" aria-hidden="true" />
                         <p v-if="view !== 'overview'" class="cd-mono truncate text-[0.78rem] uppercase tracking-[0.1em] text-[var(--accent)]">
-                            {{ navLinks.find((l) => l.id === view)?.label ?? text('contact', 'contact_subtitle') ?? text('contact', 'contact_title') ?? '' }}
+                            {{ navLinks.find((l) => l.id === view)?.label ?? 'Get in touch' }}
                         </p>
                     </div>
 
@@ -633,7 +638,7 @@ const year = new Date().getFullYear();
                     <div class="flex items-center gap-3">
                         <span class="cd-mono hidden text-[0.72rem] tabular-nums text-[var(--muted)] sm:inline" aria-hidden="true">{{ String(scrollPct).padStart(3, '0') }}%</span>
                         <a v-if="has('contact')" href="#contact" class="cd-btn cd-btn-primary !px-4 !py-2 !text-[0.8rem]" @click.prevent="setView('contact')">
-                            {{ text('contact', 'contact_subtitle') ?? text('contact', 'contact_title') ?? email }}<ArrowUpRight class="cd-arrow h-3.5 w-3.5" />
+                            Contact me<ArrowUpRight class="cd-arrow h-3.5 w-3.5" />
                         </a>
                     </div>
                 </div>
@@ -700,25 +705,6 @@ const year = new Date().getFullYear();
                             <span v-if="location" class="cd-mono inline-flex items-center gap-2 text-[0.75rem] text-[var(--muted)]"><MapPin class="h-3.5 w-3.5 text-[var(--accent)]" />{{ location }}</span>
                         </div>
                     </article>
-
-                    <!-- Stats widgets from about_highlights -->
-                    <aside v-if="highlights.length" class="cd-span-4 grid content-start gap-4 sm:grid-cols-2 lg:grid-cols-1">
-                        <article
-                            v-for="(h, i) in highlights.slice(0, 3)"
-                            :key="i"
-                            data-reveal
-                            :style="{ '--d': `${(i + 1) * 90}ms` }"
-                            class="cd-win cd-stat"
-                        >
-                            <div class="cd-stat-head">
-                                <span class="cd-mono text-[0.7rem] uppercase tracking-[0.12em] text-[var(--muted)]">{{ String(i + 1).padStart(2, '0') }}</span>
-                                <Activity class="h-4 w-4 text-[var(--accent)]" aria-hidden="true" />
-                            </div>
-                            <p class="cd-display cd-stat-value">{{ h.title }}</p>
-                            <p v-if="h.description" class="cd-muted mt-2 text-[0.9rem] leading-snug">{{ h.description }}</p>
-                            <span class="cd-spark" aria-hidden="true"><i /></span>
-                        </article>
-                    </aside>
                 </section>
 
                 <!-- ============================== ABOUT ============================== -->

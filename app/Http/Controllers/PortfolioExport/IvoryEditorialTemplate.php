@@ -254,9 +254,6 @@ trait IvoryEditorialTemplate
             $aboutCtaUrl = $about['about_cta_url'] ?? '';
             if ($cvUrl !== '' || ($aboutCtaText !== '' && $aboutCtaUrl !== '')) {
                 $html .= '<div data-reveal class="ie-about-actions">';
-                if ($cvUrl !== '') {
-                    $html .= '<a href="'.$url($about['about_cv_file']).'" download target="_blank" rel="noopener" class="ie-btn ie-btn-accent"><span aria-hidden="true">↓</span>'.$escape($aboutCtaText !== '' ? $aboutCtaText : 'Download CV').'</a>';
-                }
                 if ($aboutCtaText !== '' && $aboutCtaUrl !== '' && $cvUrl !== '') {
                     $html .= '<a href="'.$url($aboutCtaUrl).'" class="ie-btn ie-btn-ghost">'.$escape($aboutCtaText).'</a>';
                 } elseif ($aboutCtaText !== '' && $aboutCtaUrl !== '') {

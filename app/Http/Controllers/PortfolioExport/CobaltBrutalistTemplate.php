@@ -181,9 +181,6 @@ trait CobaltBrutalistTemplate
             $aboutCtaUrl = $about['about_cta_url'] ?? null;
             if ($aboutCv !== '' || (! empty($aboutCtaText) && ! empty($aboutCtaUrl))) {
                 $html .= '<div class="nb-actions nb-about-actions" data-reveal>';
-                if ($aboutCv !== '') {
-                    $html .= '<a href="'.$url($about['about_cv_file'], '').'" download target="_blank" rel="noopener" class="nb-btn nb-btn-primary"><span aria-hidden="true">↓</span>'.$escape($aboutCtaText ?: 'Download CV').'</a>';
-                }
                 if (! empty($aboutCtaText) && ! empty($aboutCtaUrl)) {
                     $html .= '<a href="'.$url($aboutCtaUrl).'" class="nb-btn '.($aboutCv !== '' ? 'nb-btn-ghost' : 'nb-btn-primary').'" data-scroll-link>'.$escape($aboutCtaText).'<span class="nb-arrow" aria-hidden="true">↗</span></a>';
                 }

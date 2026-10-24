@@ -194,7 +194,7 @@ const defaultArrayItem = (fieldKey: string) => {
         case 'hero_social_links':
             return { platform: 'github', url: '' };
         case 'about_highlights':
-            return { value: '', label: '' };
+            return '';
         case 'services_list':
             return { icon: '', title: '', description: '', url: '' };
         case 'nav_links':
@@ -211,6 +211,23 @@ const defaultValueFor = (dataType?: string, fieldKey?: string) => {
     if (dataType === 'array') return [defaultArrayItem(fieldKey || '')];
     if (dataType === 'boolean') return booleanDefaults.has(fieldKey || '');
     return '';
+};
+
+const normalizeAboutHighlights = (value: any): string[] => {
+    if (!Array.isArray(value)) return typeof value === 'string' ? [value] : [];
+
+    return value
+        .map((item) => {
+            if (typeof item === 'string') return item.trim();
+            if (!item || typeof item !== 'object') return '';
+
+            return [item.value, item.label, item.title]
+                .filter((part) => typeof part === 'string' || typeof part === 'number')
+                .map((part) => String(part).trim())
+                .filter(Boolean)
+                .join(' ');
+        })
+        .filter(Boolean);
 };
 
 const normalizeHeroSocialLinks = (value: any) => {
@@ -237,9 +254,12 @@ const buildSections = (): FormSection[] =>
             const value = (fv.value !== null && fv.value !== undefined && (!Array.isArray(fv.value) || fv.value.length > 0))
                 ? fv.value
                 : defaultValueFor(fd?.data_type, fd?.field_key);
+            const normalizedValue = fd?.field_key === 'about_highlights'
+                ? normalizeAboutHighlights(value)
+                : value;
             return {
                 field_definition_id: fv.field_definition_id,
-                value: fd?.field_key === 'hero_social_links' ? normalizeHeroSocialLinks(value) : value,
+                value: fd?.field_key === 'hero_social_links' ? normalizeHeroSocialLinks(normalizedValue) : normalizedValue,
             };
         });
 
@@ -960,8 +980,18 @@ const currentSectionLabel = computed(() =>
                                                 </button>
                                             </div>
 
+                                            <!-- About highlights -->
+                                            <div v-if="fieldConfig.field_definition.field_key === 'about_highlights'" class="space-y-2">
+                                                <Label class="text-xs font-semibold text-[#64748B] dark:text-slate-400">Highlight</Label>
+                                                <Input
+                                                    v-model="activeValues[fieldConfig.field_definition.id].value[index]"
+                                                    placeholder="e.g. 5+ years of experience"
+                                                    class="h-10 rounded-lg border-[#DCE6E4] dark:border-slate-700 bg-white text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 focus-visible:ring-[#00695C]/30"
+                                                />
+                                            </div>
+
                                             <!-- Hero social links -->
-                                            <div v-if="fieldConfig.field_definition.field_key === 'hero_social_links'" class="grid gap-4 sm:grid-cols-2">
+                                            <div v-else-if="fieldConfig.field_definition.field_key === 'hero_social_links'" class="grid gap-4 sm:grid-cols-2">
                                                 <div class="space-y-2">
                                                     <Label class="text-xs font-semibold text-[#64748B] dark:text-slate-400">Platform / icon</Label>
                                                     <select
@@ -976,18 +1006,6 @@ const currentSectionLabel = computed(() =>
                                                 <div class="space-y-2">
                                                     <Label class="text-xs font-semibold text-[#64748B] dark:text-slate-400">URL</Label>
                                                     <Input v-model="arrayItem.url" placeholder="https://…" class="h-10 rounded-lg border-[#DCE6E4] dark:border-slate-700 bg-white text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 focus-visible:ring-[#00695C]/30" />
-                                                </div>
-                                            </div>
-
-                                            <!-- About highlights / stats -->
-                                            <div v-else-if="fieldConfig.field_definition.field_key === 'about_highlights'" class="grid gap-4 sm:grid-cols-2">
-                                                <div class="space-y-2">
-                                                    <Label class="text-xs font-semibold text-[#64748B] dark:text-slate-400">Value</Label>
-                                                    <Input v-model="arrayItem.value" placeholder="e.g. 5+" class="h-10 rounded-lg border-[#DCE6E4] dark:border-slate-700 bg-white text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 focus-visible:ring-[#00695C]/30" />
-                                                </div>
-                                                <div class="space-y-2">
-                                                    <Label class="text-xs font-semibold text-[#64748B] dark:text-slate-400">Label</Label>
-                                                    <Input v-model="arrayItem.label" placeholder="e.g. Years of experience" class="h-10 rounded-lg border-[#DCE6E4] dark:border-slate-700 bg-white text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 focus-visible:ring-[#00695C]/30" />
                                                 </div>
                                             </div>
 
