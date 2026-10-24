@@ -11,6 +11,7 @@ use App\Http\Controllers\PortfolioExport\EmeraldMinimalistTemplate;
 use App\Http\Controllers\PortfolioExport\NebulaGlassTemplate;
 use App\Http\Controllers\PortfolioExport\NewsprintTemplate;
 use App\Http\Controllers\PortfolioExport\PaperStackTemplate;
+use App\Http\Controllers\PortfolioExport\StreamBandsTemplate;
 use App\Http\Controllers\PortfolioExport\PortfolioExportScripts;
 use App\Models\Portfolio;
 use App\Models\Template;
@@ -38,6 +39,7 @@ class PortfolioExportController extends Controller
     use NebulaGlassTemplate;
     use NewsprintTemplate;
     use PaperStackTemplate;
+    use StreamBandsTemplate;
 
     private const TEMPLATE_THEMES = [
         'emerald-minimalist' => 'emerald',
@@ -47,6 +49,10 @@ class PortfolioExportController extends Controller
         'cobalt-brutalist' => 'cobalt',
         'nebula-glass' => 'nebula',
         'newsprint' => 'newsprint',
+        'command-deck' => 'command',
+        'paper-stack' => 'paper',
+        'stream-bands' => 'stream',
+
     ];
 
     private const TEMPLATE_RENDERERS = [

@@ -548,8 +548,7 @@ const year = new Date().getFullYear();
                         </li>
                     </ul>
 
-                    <a v-if="has('contact')" href="#contact" class="sb-btn sb-btn-primary !px-5 !py-2.5 !text-sm" @click="onNavClick($event, '#contact')">
-                        {{ text('contact', 'contact_subtitle') ?? text('contact', 'contact_title') ?? email }}<ArrowUpRight class="sb-arrow h-4 w-4" />
+                    <a v-if="has('contact')" href="#contact" class="sb-btn sb-btn-primary !px-5 !py-2.5 !text-sm" @click="onNavClick($event, '#contact')">Contact me<ArrowUpRight class="sb-arrow h-4 w-4" />
                     </a>
                     <span v-else />
                 </div>
@@ -665,14 +664,15 @@ const year = new Date().getFullYear();
                     </ul>
 
                     <div v-if="cvFile || aboutCta" data-reveal class="mt-10 flex flex-wrap gap-3">
-                        <a v-if="cvFile" :href="cvFile" download target="_blank" rel="noopener" class="sb-btn sb-btn-primary">
-                            <Download class="h-4 w-4" />Download CV</a>
+
                         <a v-if="aboutCta && cvFile" :href="aboutCta.url" class="sb-btn sb-btn-ghost" @click="onNavClick($event, aboutCta.url)">
                             {{ aboutCta.text }}<ArrowRight class="sb-arrow h-4 w-4" />
                         </a>
                         <a v-else-if="aboutCta" :href="aboutCta.url" class="sb-btn sb-btn-primary" @click="onNavClick($event, aboutCta.url)">
                             {{ aboutCta.text }}<ArrowRight class="sb-arrow h-4 w-4" />
                         </a>
+                        <a v-else-if="cvFile" :href="cvFile" download target="_blank" rel="noopener" class="sb-btn sb-btn-primary">
+                            <Download class="h-4 w-4" />Download CV</a>
                     </div>
                 </div>
             </div>
