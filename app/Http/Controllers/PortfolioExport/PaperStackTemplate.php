@@ -508,13 +508,13 @@ trait PaperStackTemplate
             }
             if ($cvFile !== '' || $aboutCta !== null) {
                 $html .= '<div data-reveal class="ps-actions ps-actions-lg">';
-                if ($cvFile !== '') {
-                    $html .= '<a href="'.$escape($cvFile).'" download target="_blank" rel="noopener" class="ps-btn ps-btn-primary">'.$icon('download', 16).'Download CV</a>';
-                }
                 if ($aboutCta !== null) {
                     $html .= '<a href="'.$url($aboutCta['url']).'" class="ps-btn '.($cvFile !== '' ? 'ps-btn-ghost' : 'ps-btn-primary').'" data-scroll-link>'.$escape($aboutCta['text']).$icon('arrow-up-right', 16, 'ps-arrow').'</a>';
-                }
-                $html .= '</div>';
+                    }
+                    else if ($cvFile !== '') {
+                        $html .= '<a href="'.$escape($cvFile).'" download target="_blank" rel="noopener" class="ps-btn ps-btn-primary">'.$icon('download', 16).'Download CV</a>';
+                        }
+                        $html .= '</div>';
             }
             $html .= '</div></div></div></section>';
         }

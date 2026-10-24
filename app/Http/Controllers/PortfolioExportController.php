@@ -10,6 +10,7 @@ use App\Http\Controllers\PortfolioExport\IvoryEditorialTemplate;
 use App\Http\Controllers\PortfolioExport\EmeraldMinimalistTemplate;
 use App\Http\Controllers\PortfolioExport\NebulaGlassTemplate;
 use App\Http\Controllers\PortfolioExport\NewsprintTemplate;
+use App\Http\Controllers\PortfolioExport\PaperStackTemplate;
 use App\Http\Controllers\PortfolioExport\PortfolioExportScripts;
 use App\Models\Portfolio;
 use App\Models\Template;
@@ -36,6 +37,7 @@ class PortfolioExportController extends Controller
     use PortfolioExportScripts;
     use NebulaGlassTemplate;
     use NewsprintTemplate;
+    use PaperStackTemplate;
 
     private const TEMPLATE_THEMES = [
         'emerald-minimalist' => 'emerald',

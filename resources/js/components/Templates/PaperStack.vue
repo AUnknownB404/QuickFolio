@@ -672,14 +672,14 @@ const year = new Date().getFullYear();
                             </ul>
 
                             <div v-if="cvFile || aboutCta" data-reveal class="mt-10 flex flex-wrap gap-3">
-                                <a v-if="cvFile" :href="cvFile" download target="_blank" rel="noopener" class="ps-btn ps-btn-primary">
-                                    <Download class="h-4 w-4" />Download CV</a>
                                 <a v-if="aboutCta && cvFile" :href="aboutCta.url" class="ps-btn ps-btn-ghost" @click="onNavClick($event, aboutCta.url)">
                                     {{ aboutCta.text }}<ArrowUpRight class="ps-arrow h-4 w-4" />
                                 </a>
                                 <a v-else-if="aboutCta" :href="aboutCta.url" class="ps-btn ps-btn-primary" @click="onNavClick($event, aboutCta.url)">
                                     {{ aboutCta.text }}<ArrowUpRight class="ps-arrow h-4 w-4" />
                                 </a>
+                                <a v-else-if="cvFile" :href="cvFile" download target="_blank" rel="noopener" class="ps-btn ps-btn-primary">
+                                    <Download class="h-4 w-4" />Download CV</a>
                             </div>
                         </div>
                     </div>
