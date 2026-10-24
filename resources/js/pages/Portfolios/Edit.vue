@@ -112,6 +112,7 @@ const props = defineProps<{
 const page = usePage();
 
 const hiddenNavbarFieldKeys = new Set(['nav_links', 'cta_text', 'cta_url']);
+const temporarilyHiddenFieldKeys = new Set(['hero_background_image']);
 
 /**
  * Display order of the editor sections.
@@ -161,7 +162,9 @@ const fieldsForSection = (sectionKey: string) => {
         )
         .map((fd) => ({ is_required: false, is_visible: true, field_definition: fd }));
 
-    return [...configured, ...extra].sort((a, b) => a.field_definition.id - b.field_definition.id);
+    return [...configured, ...extra]
+        .filter((field) => !temporarilyHiddenFieldKeys.has(field.field_definition.field_key))
+        .sort((a, b) => a.field_definition.id - b.field_definition.id);
 };
 
 const socialPlatforms = [
