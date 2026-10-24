@@ -7,6 +7,7 @@ use App\Http\Controllers\PortfolioExport\CobaltBrutalistTemplate;
 use App\Http\Controllers\PortfolioExport\CommandDeckTemplate;
 use App\Http\Controllers\PortfolioExport\DarkOrangeDesignerTemplate;
 use App\Http\Controllers\PortfolioExport\IvoryEditorialTemplate;
+use App\Http\Controllers\PortfolioExport\EmeraldMinimalistTemplate;
 use App\Http\Controllers\PortfolioExport\PortfolioExportScripts;
 use App\Models\Portfolio;
 use App\Models\Template;
@@ -29,6 +30,7 @@ class PortfolioExportController extends Controller
     use CommandDeckTemplate;
     use DarkOrangeDesignerTemplate;
     use IvoryEditorialTemplate;
+    use EmeraldMinimalistTemplate;
     use PortfolioExportScripts;
 
     private const TEMPLATE_THEMES = [
