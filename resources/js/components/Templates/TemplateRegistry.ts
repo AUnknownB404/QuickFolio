@@ -6,8 +6,9 @@ const templateRegistry: Record<string, Component> = {
     'bento-grid': defineAsyncComponent(() => import('./BentoGrid.vue')),
     'cobalt-brutalist': defineAsyncComponent(() => import('./CobaltBrutalist.vue')),
     'command-deck': defineAsyncComponent(() => import('./CommandDeck.vue')),
+    'emerald-minimalist': defineAsyncComponent(() => import('./CommandDeck.vue')),
 };
 
 export function getTemplateComponent(slug: string): Component {
-    return templateRegistry[slug] || templateRegistry['emerald-minimalist'];
+    return templateRegistry[slug] ?? templateRegistry['command-deck'];
 }
