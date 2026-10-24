@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AppLogo from '@/components/AppLogo.vue';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import {
     ArrowUpRight,
@@ -16,6 +16,9 @@ import {
     Trash2,
     PencilLine,
     Clock3,
+    Settings,
+    LogOut,
+    X,
 } from 'lucide-vue-next';
 
 interface PortfolioTemplate {
@@ -35,6 +38,25 @@ interface Portfolio {
 const props = defineProps<{
     portfolios: Portfolio[];
 }>();
+
+const searchQuery = ref('');
+const statusFilter = ref<'all' | 'published' | 'draft'>('all');
+
+const filteredPortfolios = computed(() => {
+    const query = searchQuery.value.trim().toLowerCase();
+
+    return props.portfolios.filter((portfolio) => {
+        const matchesSearch = !query ||
+            portfolio.title.toLowerCase().includes(query) ||
+            (portfolio.template?.name || '').toLowerCase().includes(query) ||
+            portfolio.slug.toLowerCase().includes(query);
+        const matchesStatus = statusFilter.value === 'all' ||
+            (statusFilter.value === 'published' && portfolio.status === 'published') ||
+            (statusFilter.value === 'draft' && portfolio.status !== 'published');
+
+        return matchesSearch && matchesStatus;
+    });
+});
 
 const publishedCount = computed(
     () => props.portfolios.filter((portfolio) => portfolio.status === 'published').length,
@@ -86,15 +108,25 @@ const deletePortfolio = (portfolio: Portfolio) => {
                     <span>My workspace</span>
                 </div>
 
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2 sm:gap-3">
                     <Link
-                        href="/templates"
-                        class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#00695C] px-4 text-sm font-semibold text-white transition hover:bg-[#00574C] focus:outline-none focus:ring-2 focus:ring-[#00695C]/30"
+                        :href="'/settings/profile'"
+                        aria-label="Settings"
+                        title="Settings"
+                        class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#E1E8E7] bg-white text-[#475569] transition hover:border-[#B9D5CE] hover:bg-[#F4F7F7] hover:text-[#00695C] focus:outline-none focus:ring-2 focus:ring-[#00695C]/30"
                     >
-                        <Plus class="h-4 w-4" />
-                        <span class="hidden sm:inline">Create portfolio</span>
-                        <span class="sm:hidden">Create</span>
+                        <Settings class="h-[18px] w-[18px]" />
                     </Link>
+
+                    <button
+                        type="button"
+                        aria-label="Log out"
+                        title="Log out"
+                        class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#E1E8E7] bg-white text-[#475569] transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 focus:outline-none focus:ring-2 focus:ring-red-200"
+                        @click="router.post(route('logout'))"
+                    >
+                        <LogOut class="h-[18px] w-[18px]" />
+                    </button>
                 </div>
             </div>
         </header>
@@ -177,15 +209,41 @@ const deletePortfolio = (portfolio: Portfolio) => {
                         </p>
                     </div>
 
-                    <div class="flex items-center gap-2 self-start rounded-xl border border-[#E1E8E7] bg-white px-3 py-2 text-sm text-[#64748B]">
-                        <Search class="h-4 w-4" />
-                        <span>All portfolios</span>
+                    <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                        <label class="relative block min-w-0 flex-1 sm:w-64">
+                            <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94A3B8]" />
+                            <input
+                                v-model="searchQuery"
+                                type="search"
+                                placeholder="Search portfolios..."
+                                aria-label="Search portfolios"
+                                class="h-10 w-full rounded-xl border border-[#E1E8E7] bg-white pl-9 pr-9 text-sm text-[#0F172A] outline-none transition placeholder:text-[#94A3B8] focus:border-[#00695C] focus:ring-2 focus:ring-[#00695C]/10"
+                            />
+                            <button
+                                v-if="searchQuery"
+                                type="button"
+                                aria-label="Clear search"
+                                class="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-[#94A3B8] hover:bg-[#F1F5F4] hover:text-[#334155]"
+                                @click="searchQuery = ''"
+                            >
+                                <X class="h-3.5 w-3.5" />
+                            </button>
+                        </label>
+                        <select
+                            v-model="statusFilter"
+                            aria-label="Filter portfolios by status"
+                            class="h-10 rounded-xl border border-[#E1E8E7] bg-white px-3 text-sm text-[#475569] outline-none transition focus:border-[#00695C] focus:ring-2 focus:ring-[#00695C]/10"
+                        >
+                            <option value="all">All portfolios</option>
+                            <option value="published">Published</option>
+                            <option value="draft">Drafts</option>
+                        </select>
                     </div>
                 </div>
 
-                <div v-if="portfolios.length" class="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                <div v-if="filteredPortfolios.length" class="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
                     <article
-                        v-for="portfolio in portfolios"
+                        v-for="portfolio in filteredPortfolios"
                         :key="portfolio.id"
                         class="group overflow-hidden rounded-2xl border border-[#E1E8E7] bg-white transition duration-200 hover:-translate-y-0.5 hover:border-[#B9D5CE] hover:shadow-[0_12px_30px_rgba(15,23,42,0.06)]"
                     >
@@ -298,7 +356,24 @@ const deletePortfolio = (portfolio: Portfolio) => {
                     </Link>
                 </div>
 
-                <!-- Empty state -->
+                <!-- Empty / no-results state -->
+                <div v-else-if="portfolios.length && (searchQuery || statusFilter !== 'all')" class="rounded-2xl border border-[#E1E8E7] bg-white px-6 py-14 text-center sm:px-12">
+                    <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F1F5F4] text-[#64748B]">
+                        <Search class="h-6 w-6" />
+                    </div>
+                    <p class="mt-5 text-lg font-bold tracking-tight text-[#0F172A]">No matching portfolios</p>
+                    <p class="mx-auto mt-2 max-w-md text-sm leading-6 text-[#64748B]">
+                        Try another search term or change the status filter to see more portfolios.
+                    </p>
+                    <button
+                        type="button"
+                        class="mt-5 inline-flex h-10 items-center justify-center rounded-xl border border-[#D6E2DF] bg-white px-4 text-sm font-semibold text-[#00695C] transition hover:bg-[#F4F7F7]"
+                        @click="searchQuery = ''; statusFilter = 'all'"
+                    >
+                        Clear filters
+                    </button>
+                </div>
+
                 <div v-else class="rounded-2xl border border-[#E1E8E7] bg-white px-6 py-16 text-center sm:px-12">
                     <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[#E8F4F1] text-[#00695C]">
                         <FolderKanban class="h-8 w-8" />

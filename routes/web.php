@@ -28,6 +28,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/', [AdminController::class, 'index'])->name('dashboard');
         Route::patch('/users/{user}/role', [AdminController::class, 'updateUserRole'])->name('users.role');
         Route::delete('/users/{user}', [AdminController::class, 'destroyUser'])->name('users.destroy');
+        Route::get('/templates/{template}/download-demo', [PortfolioExportController::class, 'downloadDemo'])->name('templates.download-demo');
         Route::post('/templates', [AdminController::class, 'storeTemplate'])->name('templates.store');
         Route::patch('/templates/{template}', [AdminController::class, 'updateTemplate'])->name('templates.update');
         Route::delete('/templates/{template}', [AdminController::class, 'destroyTemplate'])->name('templates.destroy');

@@ -2,7 +2,7 @@
 import AppLogo from '@/components/AppLogo.vue';
 import type { SharedData } from '@/types';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
-import { LayoutDashboard, LoaderCircle, Search, ShieldCheck, Users, WandSparkles, X } from 'lucide-vue-next';
+import { Download, LayoutDashboard, LoaderCircle, Search, ShieldCheck, Users, WandSparkles, X } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 
 interface UserRow {
@@ -445,7 +445,14 @@ const runSearch = () => {
                                     class="inline-flex text-xs font-semibold text-slate-500 hover:text-emerald-800"
                                     >Preview template ↗</Link
                                 >
-                                <span v-else class="text-xs text-slate-400">Publish to enable preview</span>
+                                <span v-else class="text-xs text-slate-400">Draft template</span>
+                                <a
+                                    :href="route('admin.templates.download-demo', { template: template.id })"
+                                    class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-emerald-700 hover:text-emerald-800"
+                                >
+                                    <Download class="h-3.5 w-3.5" />
+                                    Download demo ZIP
+                                </a>
                             </div>
                         </article>
                         <div

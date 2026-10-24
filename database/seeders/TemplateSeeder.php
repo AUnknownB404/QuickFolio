@@ -75,6 +75,15 @@ class TemplateSeeder extends Seeder
                 'preview_url' => '/preview/cobalt-brutalist',
                 'is_published' => true,
             ],
+            [
+                'name' => 'Command Deck',
+                'slug' => 'command-deck',
+                'category_id' => $devCategory->id,
+                'description' => 'A bold neo-brutalist portfolio with cobalt accents, hard-edged cards, skill bars, project links, and a contact form.',
+                'thumbnail' => 'https://pub-3e54a7c219cc4b1c8b8faf9ad3427681.r2.dev/templates/GRXToW4zwZwBnHpDmetSrdRntyon7GrZIUAq0At4.png',
+                'preview_url' => '/preview/command-deck',
+                'is_published' => true,
+            ]
         ];
 
         $sections = ['navbar', 'header', 'about', 'journey', 'skills', 'projects', 'contact'];

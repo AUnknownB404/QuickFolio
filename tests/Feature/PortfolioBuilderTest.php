@@ -528,6 +528,122 @@ class PortfolioBuilderTest extends TestCase
         Storage::disk('r2')->assertExists($path);
     }
 
+    public function test_portfolio_update_stores_pending_uploads_with_their_field_values()
+    {
+        $this->seed();
+        $user = User::factory()->create();
+        $template = Template::where('slug', 'emerald-minimalist')->firstOrFail();
+        $portfolio = app(PortfolioService::class)->createForUser($user, $template, 'Save Upload Test');
+        $header = $portfolio->sections()->where('section_key', 'header')->firstOrFail();
+        $about = $portfolio->sections()->where('section_key', 'about')->firstOrFail();
+        $heroImage = FieldDefinition::where('field_key', 'hero_image')->firstOrFail();
+        $resumeFile = FieldDefinition::where('field_key', 'about_cv_file')->firstOrFail();
+
+        Storage::fake('r2');
+        $r2Root = Storage::disk('r2')->path('');
+        config(['filesystems.disks.r2' => [
+            'driver' => 'local',
+            'root' => $r2Root,
+            'url' => 'https://images.example.test',
+            'throw' => true,
+            'report' => false,
+        ]]);
+        Storage::forgetDisk('r2');
+
+        $uploadId = str_repeat('a', 32);
+        $fileUploadId = str_repeat('b', 32);
+        $response = $this->actingAs($user)->post(route('portfolios.update', $portfolio), [
+            '_method' => 'PATCH',
+            'sections' => [[
+                'id' => $header->id,
+                'is_enabled' => true,
+                'field_values' => [[
+                    'field_definition_id' => $heroImage->id,
+                    'value' => "quickfolio-pending-upload:{$uploadId}",
+                ]],
+            ], [
+                'id' => $about->id,
+                'is_enabled' => true,
+                'field_values' => [[
+                    'field_definition_id' => $resumeFile->id,
+                    'value' => "quickfolio-pending-upload:{$fileUploadId}",
+                ]],
+            ]],
+            'pending_uploads' => [
+                $uploadId => $this->fakeImage(),
+                $fileUploadId => UploadedFile::fake()->create('resume.pdf', 100, 'application/pdf'),
+            ],
+            'pending_upload_types' => [
+                $uploadId => 'image',
+                $fileUploadId => 'file',
+            ],
+        ]);
+
+        $response->assertRedirect();
+        foreach ([[$header, $heroImage], [$about, $resumeFile]] as [$section, $field]) {
+            $savedValue = $section->fieldValues()
+                ->where('field_definition_id', $field->id)
+                ->firstOrFail()
+                ->value;
+            $this->assertSame('https', parse_url($savedValue, PHP_URL_SCHEME));
+            $this->assertSame('images.example.test', parse_url($savedValue, PHP_URL_HOST));
+            $path = ltrim((string) parse_url($savedValue, PHP_URL_PATH), '/');
+            $this->assertStringStartsWith(
+                "users/{$user->id}/templates/{$template->id}/portfolios/{$portfolio->id}/",
+                $path
+            );
+            Storage::disk('r2')->assertExists($path);
+        }
+    }
+
+    public function test_removing_portfolio_image_clears_field_and_deletes_r2_object()
+    {
+        $this->seed();
+        $user = User::factory()->create();
+        $template = Template::where('slug', 'emerald-minimalist')->firstOrFail();
+        $portfolio = app(PortfolioService::class)->createForUser($user, $template, 'Remove Image Test');
+        $header = $portfolio->sections()->where('section_key', 'header')->firstOrFail();
+        $heroImage = FieldDefinition::where('field_key', 'hero_image')->firstOrFail();
+
+        Storage::fake('r2');
+        $r2Root = Storage::disk('r2')->path('');
+        config(['filesystems.disks.r2' => [
+            'driver' => 'local',
+            'root' => $r2Root,
+            'url' => 'https://images.example.test',
+            'throw' => true,
+            'report' => false,
+        ]]);
+        Storage::forgetDisk('r2');
+
+        $path = "users/{$user->id}/templates/{$template->id}/portfolios/{$portfolio->id}/hero.webp";
+        Storage::disk('r2')->put($path, 'image-content');
+        PortfolioFieldValue::updateOrCreate(
+            [
+                'portfolio_section_id' => $header->id,
+                'field_definition_id' => $heroImage->id,
+            ],
+            ['value' => "https://images.example.test/{$path}"]
+        );
+
+        $this->actingAs($user)->patch(route('portfolios.update', $portfolio), [
+            'sections' => [[
+                'id' => $header->id,
+                'is_enabled' => true,
+                'field_values' => [[
+                    'field_definition_id' => $heroImage->id,
+                    'value' => null,
+                ]],
+            ]],
+        ])->assertRedirect();
+
+        $this->assertNull($header->fieldValues()
+            ->where('field_definition_id', $heroImage->id)
+            ->firstOrFail()
+            ->value);
+        Storage::disk('r2')->assertMissing($path);
+    }
+
     public function test_portfolio_download_includes_images_from_r2()
     {
         $this->seed();

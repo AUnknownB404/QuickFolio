@@ -13,11 +13,15 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
+use Throwable;
 
 class PortfolioController extends Controller
 {
+    private const PENDING_UPLOAD_PREFIX = 'quickfolio-pending-upload:';
+
     use AuthorizesRequests;
 
     protected PortfolioService $portfolioService;
@@ -85,6 +89,10 @@ class PortfolioController extends Controller
             'sections.*.field_values' => ['nullable', 'array'],
             'sections.*.field_values.*.field_definition_id' => ['required', 'exists:field_definitions,id'],
             'sections.*.field_values.*.value' => ['nullable'],
+            'pending_uploads' => ['sometimes', 'array'],
+            'pending_uploads.*' => ['required', 'file', 'max:10240'],
+            'pending_upload_types' => ['sometimes', 'array'],
+            'pending_upload_types.*' => ['required', 'in:image,file'],
             'google_form_url' => [
                 'nullable',
                 'url',
@@ -122,64 +130,174 @@ class PortfolioController extends Controller
             ]);
         }
 
-        DB::transaction(function () use ($portfolio, $validated) {
-            $portfolio->update([
-                'google_form_url' => GoogleFormIntegration::formUrl($validated['google_form_url'] ?? null),
-                'google_form_name_entry' => $validated['google_form_name_entry'] ?? null,
-                'google_form_email_entry' => $validated['google_form_email_entry'] ?? null,
-                'google_form_message_entry' => $validated['google_form_message_entry'] ?? null,
+        $pendingUploads = $request->file('pending_uploads', []);
+        $pendingUploadTypes = $request->input('pending_upload_types', []);
+        if (! is_array($pendingUploads) || ! is_array($pendingUploadTypes)
+            || array_diff(array_keys($pendingUploads), array_keys($pendingUploadTypes)) !== []
+            || array_diff(array_keys($pendingUploadTypes), array_keys($pendingUploads)) !== []) {
+            throw ValidationException::withMessages([
+                'pending_uploads' => 'The selected uploads could not be matched. Please select them again.',
             ]);
+        }
 
-            foreach ($validated['sections'] as $secData) {
-                $section = PortfolioSection::where('portfolio_id', $portfolio->id)
-                    ->where('id', $secData['id'])
-                    ->first();
+        foreach ($pendingUploads as $uploadId => $file) {
+            if (! is_string($uploadId) || preg_match('/^[a-f0-9]{32}$/', $uploadId) !== 1) {
+                throw ValidationException::withMessages([
+                    'pending_uploads' => 'The selected uploads are invalid. Please select them again.',
+                ]);
+            }
 
-                if (! $section) {
+            $type = $pendingUploadTypes[$uploadId];
+            $mimes = $type === 'image'
+                ? 'mimes:jpg,jpeg,png,gif,webp'
+                : 'mimes:pdf,doc,docx,txt,zip';
+
+            Validator::make(
+                ['file' => $file],
+                ['file' => ['required', 'file', $mimes, 'max:10240']]
+            )->validate();
+        }
+
+        if ($pendingUploads !== [] && (! is_string(config('filesystems.disks.r2.url')) || trim(config('filesystems.disks.r2.url')) === '')) {
+            throw new \RuntimeException('R2_URL must be configured before uploading files.');
+        }
+
+        $storedUploadPaths = [];
+        try {
+            $storedUploadUrls = [];
+            $directory = "users/{$portfolio->user_id}/templates/{$portfolio->template_id}/portfolios/{$portfolio->id}";
+            foreach ($pendingUploads as $uploadId => $file) {
+                $path = $file->store($directory, 'r2');
+                if ($path === false) {
+                    throw new \RuntimeException('Unable to store an uploaded portfolio file.');
+                }
+
+                $storedUploadPaths[] = $path;
+                $storedUploadUrls[$uploadId] = Storage::disk('r2')->url($path);
+            }
+
+            $usedUploads = [];
+            foreach ($validated['sections'] as &$sectionData) {
+                if (! isset($sectionData['field_values'])) {
                     continue;
                 }
 
-                $section->update([
-                    'is_enabled' => $secData['is_enabled'],
+                foreach ($sectionData['field_values'] as &$fieldValueData) {
+                    $fieldValueData['value'] = $this->replacePendingUploadReferences(
+                        $fieldValueData['value'] ?? null,
+                        $storedUploadUrls,
+                        $usedUploads
+                    );
+                }
+                unset($fieldValueData);
+            }
+            unset($sectionData);
+
+            if (array_diff_key($storedUploadUrls, $usedUploads) !== []) {
+                throw ValidationException::withMessages([
+                    'pending_uploads' => 'A selected upload is no longer attached to a portfolio field.',
+                ]);
+            }
+
+            DB::transaction(function () use ($portfolio, $validated) {
+                $portfolio->update([
+                    'google_form_url' => GoogleFormIntegration::formUrl($validated['google_form_url'] ?? null),
+                    'google_form_name_entry' => $validated['google_form_name_entry'] ?? null,
+                    'google_form_email_entry' => $validated['google_form_email_entry'] ?? null,
+                    'google_form_message_entry' => $validated['google_form_message_entry'] ?? null,
                 ]);
 
-                if (isset($secData['field_values'])) {
-                    foreach ($secData['field_values'] as $fvData) {
-                        $fieldDefId = $fvData['field_definition_id'];
-                        $fieldDef = FieldDefinition::find($fieldDefId);
-                        $value = $fvData['value'] ?? null;
+                foreach ($validated['sections'] as $secData) {
+                    $section = PortfolioSection::where('portfolio_id', $portfolio->id)
+                        ->where('id', $secData['id'])
+                        ->first();
 
-                        if ($fieldDef) {
-                            if ($fieldDef->data_type === 'email' && ! empty($value)) {
-                                validator(['email' => $value], ['email' => 'email'])->validate();
-                            } elseif ($fieldDef->data_type === 'url' && ! empty($value)) {
-                                validator(['url' => $value], ['url' => 'url'])->validate();
-                            } elseif ($fieldDef->data_type === 'string' && $value !== null && $value !== '') {
-                                validator(['value' => $value], ['value' => 'string'])->validate();
+                    if (! $section) {
+                        continue;
+                    }
+
+                    $section->update([
+                        'is_enabled' => $secData['is_enabled'],
+                    ]);
+
+                    if (isset($secData['field_values'])) {
+                        foreach ($secData['field_values'] as $fvData) {
+                            $fieldDefId = $fvData['field_definition_id'];
+                            $fieldDef = FieldDefinition::find($fieldDefId);
+                            $value = $fvData['value'] ?? null;
+
+                            if ($fieldDef) {
+                                if ($fieldDef->data_type === 'email' && ! empty($value)) {
+                                    validator(['email' => $value], ['email' => 'email'])->validate();
+                                } elseif ($fieldDef->data_type === 'url' && ! empty($value)) {
+                                    validator(['url' => $value], ['url' => 'url'])->validate();
+                                } elseif ($fieldDef->data_type === 'string' && $value !== null && $value !== '') {
+                                    validator(['value' => $value], ['value' => 'string'])->validate();
+                                }
                             }
-                        }
 
-                        PortfolioFieldValue::updateOrCreate(
-                            [
-                                'portfolio_section_id' => $section->id,
-                                'field_definition_id' => $fieldDefId,
-                            ],
-                            [
-                                'value' => $value,
-                            ]
-                        );
+                            PortfolioFieldValue::updateOrCreate(
+                                [
+                                    'portfolio_section_id' => $section->id,
+                                    'field_definition_id' => $fieldDefId,
+                                ],
+                                [
+                                    'value' => $value,
+                                ]
+                            );
+                        }
                     }
                 }
+            });
+        } catch (Throwable $exception) {
+            foreach ($storedUploadPaths as $path) {
+                try {
+                    if (! Storage::disk('r2')->delete($path)) {
+                        report(new \RuntimeException("Could not remove failed portfolio upload: {$path}"));
+                    }
+                } catch (Throwable $cleanupException) {
+                    report($cleanupException);
+                }
             }
-        });
+
+            throw $exception;
+        }
 
         $currentUploadPaths = $this->portfolioUploadPaths($portfolio);
         $unusedUploadPaths = array_diff_key($previousUploadPaths, $currentUploadPaths);
         foreach ($unusedUploadPaths as $upload) {
-            Storage::disk($upload['disk'])->delete($upload['path']);
+            if (! Storage::disk($upload['disk'])->delete($upload['path'])) {
+                throw new \RuntimeException("Could not remove replaced portfolio upload: {$upload['path']}");
+            }
         }
 
         return redirect()->back()->with('success', 'Portfolio updated successfully.');
+    }
+
+    private function replacePendingUploadReferences(mixed $value, array $uploadUrls, array &$usedUploads): mixed
+    {
+        if (is_array($value)) {
+            foreach ($value as $key => $nestedValue) {
+                $value[$key] = $this->replacePendingUploadReferences($nestedValue, $uploadUrls, $usedUploads);
+            }
+
+            return $value;
+        }
+
+        if (! is_string($value) || ! str_starts_with($value, self::PENDING_UPLOAD_PREFIX)) {
+            return $value;
+        }
+
+        $uploadId = substr($value, strlen(self::PENDING_UPLOAD_PREFIX));
+        if (preg_match('/^[a-f0-9]{32}$/', $uploadId) !== 1 || ! array_key_exists($uploadId, $uploadUrls)) {
+            throw ValidationException::withMessages([
+                'pending_uploads' => 'A selected upload could not be matched. Please select it again.',
+            ]);
+        }
+
+        $usedUploads[$uploadId] = true;
+
+        return $uploadUrls[$uploadId];
     }
 
     private function portfolioUploadPaths(Portfolio $portfolio): array

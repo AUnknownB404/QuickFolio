@@ -280,7 +280,7 @@ onBeforeUnmount(() => {
                     <p v-if="skills.skills_description" class="mt-4 max-w-lg text-lg text-[var(--muted)]">{{ skills.skills_description }}</p>
 
                     <ul class="mt-12 flex flex-wrap gap-3" data-reveal>
-                        <li v-for="(skill, index) in skills.skills_list" :key="index" class="pill" :style="{ '--d': `${index * 70}ms` }">
+                        <li v-for="(skill, index) in skills.skills_list" :key="index" class="pill" :style="{ '--d': `${Number(index) * 70}ms` }">
                             <span v-if="skill.percent" class="pill-fill" :style="{ width: skill.percent + '%' }"></span>
                             <span class="relative z-10 font-semibold">{{ skill.label }}</span>
                             <span v-if="skill.percent" class="relative z-10 text-sm tabular-nums text-[var(--muted)]">{{ skill.percent }}%</span>

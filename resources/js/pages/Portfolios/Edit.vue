@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import AppLogo from '@/components/AppLogo.vue';
-import axios from 'axios';
-import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ref, computed, watch } from 'vue';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import { ref, computed, watch, onBeforeUnmount } from 'vue';
 import {
     ArrowLeft,
     ArrowUpRight,
@@ -97,11 +96,20 @@ interface FormSection {
     field_values: FormFieldValue[];
 }
 
+interface PendingUpload {
+    file: File;
+    type: 'image' | 'file';
+    uploadKey: string;
+    previewUrl?: string;
+}
+
 const props = defineProps<{
     portfolio: Portfolio;
     availableTemplates: { id: number; name: string; slug: string; category?: { name: string } }[];
     fieldDefinitions: FieldDefinition[];
 }>();
+
+const page = usePage();
 
 const hiddenNavbarFieldKeys = new Set(['nav_links', 'cta_text', 'cta_url']);
 
@@ -260,16 +268,105 @@ const form = useForm<Record<string, any>>({
     google_form_message_entry: props.portfolio.google_form_message_entry || '',
 });
 
+const pendingUploadPrefix = 'quickfolio-pending-upload:';
+const maxUploadBytes = 10 * 1024 * 1024;
 const uploadingFiles = ref<Record<string, boolean>>({});
 const uploadErrors = ref<Record<string, string>>({});
 const uploadedFiles = ref<Record<string, string>>({});
+const pendingUploads = ref<Record<string, PendingUpload>>({});
 const hasPendingUploads = computed(() => Object.values(uploadingFiles.value).some(Boolean));
+
+const pendingUploadId = (value: unknown): string | null => {
+    if (typeof value !== 'string' || !value.startsWith(pendingUploadPrefix)) return null;
+    const id = value.slice(pendingUploadPrefix.length);
+    return /^[a-f0-9]{32}$/.test(id) ? id : null;
+};
+
+const discardPendingUpload = (uploadId: string) => {
+    const upload = pendingUploads.value[uploadId];
+    if (upload?.previewUrl) URL.revokeObjectURL(upload.previewUrl);
+    delete pendingUploads.value[uploadId];
+};
+
+const discardPendingUploads = (value: unknown) => {
+    if (Array.isArray(value)) {
+        value.forEach(discardPendingUploads);
+        return;
+    }
+    if (value && typeof value === 'object') {
+        Object.values(value).forEach(discardPendingUploads);
+        return;
+    }
+
+    const uploadId = pendingUploadId(value);
+    if (uploadId) discardPendingUpload(uploadId);
+};
+
+const clearPendingUploads = () => {
+    Object.keys(pendingUploads.value).forEach(discardPendingUpload);
+    uploadedFiles.value = {};
+    uploadErrors.value = {};
+};
+
+const assetPreviewUrl = (value: unknown): string => {
+    const uploadId = pendingUploadId(value);
+    if (uploadId) return pendingUploads.value[uploadId]?.previewUrl || '';
+    return typeof value === 'string' ? value : '';
+};
+
+const removeImage = (value: unknown, onRemoved: () => void) => {
+    discardPendingUploads(value);
+    onRemoved();
+};
+
+const compressImage = async (file: File): Promise<File> => {
+    if (file.type === 'image/gif') return file;
+
+    const bitmap = await createImageBitmap(file);
+    try {
+        const maxDimension = 1920;
+        const scale = Math.min(1, maxDimension / bitmap.width, maxDimension / bitmap.height);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+        canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error('Could not prepare the image for compression.');
+        context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+        const compressed = await new Promise<Blob>((resolve, reject) => {
+            canvas.toBlob(
+                (blob) => blob
+                    ? resolve(blob)
+                    : reject(new Error('Could not compress this image. Please try another image.')),
+                'image/webp',
+                0.82,
+            );
+        });
+        if (compressed.size >= file.size) return file;
+
+        const extension = compressed.type === 'image/webp'
+            ? '.webp'
+            : compressed.type === 'image/png'
+                ? '.png'
+                : '.jpg';
+
+        return new File(
+            [compressed],
+            `${file.name.replace(/\.[^.]+$/, '')}${extension}`,
+            { type: compressed.type, lastModified: file.lastModified },
+        );
+    } finally {
+        bitmap.close();
+    }
+};
 
 const uploadFile = async (
     event: Event,
     uploadKey: string,
     type: 'image' | 'file',
-    onUploaded: (url: string) => void,
+    currentValue: () => unknown,
+    onQueued: (value: string) => void,
 ) => {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
@@ -279,24 +376,32 @@ const uploadFile = async (
     delete uploadErrors.value[uploadKey];
     delete uploadedFiles.value[uploadKey];
 
-    const data = new FormData();
-    data.append('file', file);
-    data.append('type', type);
-
     try {
-        const response = await axios.post(route('portfolios.upload', props.portfolio.id as any), data);
-        onUploaded(response.data.url);
-        uploadedFiles.value[uploadKey] = response.data.filename;
+        if (file.size > maxUploadBytes) {
+            throw new Error('Files must be 10 MB or smaller.');
+        }
+
+        const preparedFile = type === 'image' ? await compressImage(file) : file;
+        discardPendingUploads(currentValue());
+
+        const uploadId = crypto.randomUUID().replace(/-/g, '');
+        const previewUrl = URL.createObjectURL(preparedFile);
+        pendingUploads.value[uploadId] = { file: preparedFile, type, uploadKey, previewUrl };
+        onQueued(`${pendingUploadPrefix}${uploadId}`);
+        uploadedFiles.value[uploadKey] = file.name;
     } catch (error) {
-        const message = axios.isAxiosError(error)
-            ? error.response?.data?.errors?.file?.[0] || error.response?.data?.message || error.message
-            : 'An unexpected error occurred while uploading the file.';
-        uploadErrors.value[uploadKey] = message;
+        uploadErrors.value[uploadKey] = error instanceof Error
+            ? error.message
+            : 'Could not prepare this file. Please try again.';
     } finally {
         uploadingFiles.value[uploadKey] = false;
         input.value = '';
     }
 };
+
+onBeforeUnmount(() => {
+    clearPendingUploads();
+});
 
 const firstSectionKey = () => form.sections[0]?.section_key || 'navbar';
 
@@ -307,6 +412,7 @@ const selectedTemplateId = ref(props.portfolio.template.id);
 watch(
     () => props.portfolio,
     () => {
+        clearPendingUploads();
         form.sections = buildSections();
         form.google_form_url = props.portfolio.google_form_url || '';
         form.google_form_name_entry = props.portfolio.google_form_name_entry || '';
@@ -346,14 +452,39 @@ const addArrayItem = (fieldDefId: number, fieldKey: string) => {
 
 const removeArrayItem = (fieldDefId: number, index: number) => {
     const fv = activeValues.value[fieldDefId];
-    if (fv && Array.isArray(fv.value)) fv.value.splice(index, 1);
+    if (fv && Array.isArray(fv.value)) {
+        discardPendingUploads(fv.value[index]);
+        fv.value.splice(index, 1);
+    }
 };
 
 const savePortfolio = () => {
     if (hasPendingUploads.value) return;
 
-    form.patch(route('portfolios.update', props.portfolio.id as any), {
+    const uploads = pendingUploads.value;
+    const uploadIds = Object.keys(uploads);
+
+    form.transform((data) => ({
+        ...data,
+        _method: 'patch',
+        ...(uploadIds.length > 0
+            ? {
+                pending_uploads: Object.fromEntries(uploadIds.map((id) => [id, uploads[id].file])),
+                pending_upload_types: Object.fromEntries(uploadIds.map((id) => [id, uploads[id].type])),
+            }
+            : {}),
+    })).post(route('portfolios.update', props.portfolio.id as any), {
         preserveScroll: true,
+        onSuccess: clearPendingUploads,
+        onError: (errors) => {
+            uploadIds.forEach((id) => {
+                const upload = uploads[id];
+                const message = errors[`pending_uploads.${id}`] || errors.pending_uploads;
+                if (upload && typeof message === 'string') {
+                    uploadErrors.value[upload.uploadKey] = message;
+                }
+            });
+        },
     });
 };
 
@@ -395,14 +526,14 @@ const currentSectionLabel = computed(() =>
 <template>
     <Head :title="`Editing ${portfolio.title} — quickFolio`" />
 
-    <div class="min-h-screen bg-[#F4F7F7] text-[#0F172A]">
+    <div class="min-h-screen overflow-x-clip bg-[#F4F7F7] dark:bg-slate-950 text-[#0F172A] dark:text-slate-100 transition-colors duration-200">
         <!-- Custom quickFolio editor navigation; no Laravel default layout -->
-        <header class="sticky top-0 z-40 border-b border-[#E1E8E7] bg-white/95 backdrop-blur">
-            <div class="mx-auto flex min-h-[68px] max-w-[1800px] items-center justify-between gap-3 px-4 sm:px-6">
+        <header class="sticky top-0 z-40 border-b border-[#E1E8E7] dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur">
+            <div class="mx-auto flex min-h-[68px] max-w-[1800px] flex-wrap items-center justify-between gap-2 px-3 py-2 sm:flex-nowrap sm:gap-3 sm:px-5 xl:px-6">
                 <div class="flex min-w-0 items-center gap-3">
                     <Link
                         :href="route('dashboard')"
-                        class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#E1E8E7] bg-white text-[#64748B] transition hover:border-[#BFD4CE] hover:text-[#00695C]"
+                        class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#E1E8E7] dark:border-slate-800 bg-white dark:bg-slate-900 text-[#64748B] dark:text-slate-400 transition hover:border-[#BFD4CE] dark:border-slate-700 hover:text-[#00695C]"
                         aria-label="Back to dashboard"
                     >
                         <ArrowLeft class="h-4 w-4" />
@@ -416,30 +547,30 @@ const currentSectionLabel = computed(() =>
 
                     <div class="min-w-0 sm:ml-2">
                         <div class="flex min-w-0 items-center gap-2">
-                            <span class="hidden text-[#CBD5D1] sm:inline">/</span>
-                            <h1 class="max-w-[180px] truncate text-sm font-bold text-[#0F172A] sm:max-w-[260px] sm:text-base">
+                            <span class="hidden text-[#CBD5D1] dark:text-slate-600 sm:inline">/</span>
+                            <h1 class="max-w-[180px] truncate text-sm font-bold text-[#0F172A] dark:text-slate-100 sm:max-w-[260px] sm:text-base">
                                 {{ portfolio.title }}
                             </h1>
                             <span
                                 class="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-semibold capitalize sm:text-xs"
                                 :class="portfolio.status === 'published'
-                                    ? 'border-[#C7E6D8] bg-[#EFFAF4] text-[#16734A]'
-                                    : 'border-[#F0DDB8] bg-[#FFF8E9] text-[#9A6700]'"
+                                    ? 'border-[#C7E6D8] dark:border-emerald-900 bg-[#EFFAF4] dark:bg-emerald-950/40 text-[#16734A]'
+                                    : 'border-[#F0DDB8] dark:border-amber-900 bg-[#FFF8E9] dark:bg-amber-950/40 text-[#9A6700]'"
                             >
                                 <span class="h-1.5 w-1.5 rounded-full" :class="portfolio.status === 'published' ? 'bg-[#16A34A]' : 'bg-[#D99A18]'" />
                                 {{ portfolio.status }}
                             </span>
                         </div>
-                        <p class="mt-0.5 hidden text-xs text-[#94A3B8] sm:block">
+                        <p class="mt-0.5 hidden text-xs text-[#94A3B8] dark:text-slate-500 sm:block">
                             Editing with {{ portfolio.template.name }}
                         </p>
                     </div>
                 </div>
 
-                <div class="flex shrink-0 items-center gap-2">
-                    <button
+                <div class="flex max-w-full shrink-0 items-center gap-1.5 sm:gap-2">
+                    <button v-if="page.props.auth.user.role === 'admin'"
                         type="button"
-                        class="hidden h-10 items-center gap-2 rounded-xl border border-[#DCE6E4] bg-white px-3 text-sm font-semibold text-[#475569] transition hover:bg-[#F8FBFA] md:inline-flex"
+                        class="hidden h-10 items-center gap-2 rounded-xl border border-[#DCE6E4] dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-sm font-semibold text-[#475569] dark:text-slate-300 transition hover:bg-[#F8FBFA] dark:bg-slate-800/70 md:inline-flex"
                         @click="isSwitchModalOpen = true"
                     >
                         <LayoutTemplate class="h-4 w-4 text-[#00695C]" />
@@ -453,7 +584,7 @@ const currentSectionLabel = computed(() =>
                         :href="route('portfolios.published', portfolio.slug as any)"
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#DCE6E4] bg-white text-[#00695C] transition hover:bg-[#F0F7F5] sm:w-auto sm:px-3"
+                        class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#DCE6E4] dark:border-slate-700 bg-white dark:bg-slate-900 text-[#00695C] transition hover:bg-[#F0F7F5] dark:bg-teal-950/50 sm:w-auto sm:px-3"
                         title="View live portfolio"
                     >
                         <Eye class="h-4 w-4" />
@@ -463,7 +594,7 @@ const currentSectionLabel = computed(() =>
 
                     <a
                         :href="route('portfolios.download', portfolio.id as any)"
-                        class="inline-flex h-10 w-10 items-center justify-center gap-2 rounded-xl border border-[#DCE6E4] bg-white text-[#00695C] transition hover:bg-[#F0F7F5] sm:w-auto sm:px-3"
+                        class="inline-flex h-10 w-10 items-center justify-center gap-2 rounded-xl border border-[#DCE6E4] dark:border-slate-700 bg-white dark:bg-slate-900 text-[#00695C] transition hover:bg-[#F0F7F5] dark:bg-teal-950/50 sm:w-auto sm:px-3"
                         title="Download portfolio as ZIP"
                     >
                         <Download class="h-4 w-4" />
@@ -473,7 +604,7 @@ const currentSectionLabel = computed(() =>
                     <button
                         type="button"
                         :disabled="publishForm.processing"
-                        class="hidden h-10 items-center gap-2 rounded-xl border border-[#DCE6E4] bg-white px-3 text-sm font-semibold text-[#475569] transition hover:bg-[#F8FBFA] sm:inline-flex disabled:cursor-not-allowed disabled:opacity-50"
+                        class="hidden h-10 items-center gap-2 rounded-xl border border-[#DCE6E4] dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-sm font-semibold text-[#475569] dark:text-slate-300 transition hover:bg-[#F8FBFA] dark:bg-slate-800/70 sm:inline-flex disabled:cursor-not-allowed disabled:opacity-50"
                         @click="publishPortfolio"
                     >
                         <Globe2 class="h-4 w-4 text-[#00695C]" />
@@ -496,13 +627,13 @@ const currentSectionLabel = computed(() =>
         </header>
 
         <!-- Editor workspace -->
-        <main class="mx-auto grid max-w-[1800px] grid-cols-1 gap-5 px-4 py-5 sm:px-6 lg:grid-cols-[220px_minmax(0,1fr)_280px] lg:gap-5 lg:py-6">
+        <main class="mx-auto grid w-full max-w-[1800px] min-w-0 grid-cols-1 gap-4 px-3 py-4 sm:gap-5 sm:px-5 sm:py-5 lg:grid-cols-[210px_minmax(0,1fr)] lg:gap-5 xl:grid-cols-[220px_minmax(0,1fr)_280px] xl:px-6 xl:py-6">
             <!-- Section navigation -->
             <aside class="min-w-0">
-                <div class="rounded-2xl border border-[#E1E8E7] bg-white p-3 shadow-[0_2px_8px_rgba(15,23,42,0.025)] lg:sticky lg:top-[92px]">
+                <div class="rounded-2xl border border-[#E1E8E7] dark:border-slate-800 bg-white dark:bg-slate-900 p-3 shadow-[0_2px_8px_rgba(15,23,42,0.025)] lg:sticky lg:top-[92px]">
                     <div class="px-3 pb-3 pt-2">
-                        <p class="text-[11px] font-bold uppercase tracking-[0.16em] text-[#94A3B8]">Workspace</p>
-                        <h2 class="mt-1 text-sm font-bold text-[#0F172A]">Portfolio sections</h2>
+                        <p class="text-[11px] font-bold uppercase tracking-[0.16em] text-[#94A3B8] dark:text-slate-500">Workspace</p>
+                        <h2 class="mt-1 text-sm font-bold text-[#0F172A] dark:text-slate-100">Portfolio sections</h2>
                     </div>
 
                     <nav class="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible" aria-label="Portfolio sections">
@@ -512,19 +643,19 @@ const currentSectionLabel = computed(() =>
                             type="button"
                             class="flex min-w-max items-center gap-3 rounded-xl px-3 py-3 text-left transition lg:w-full"
                             :class="activeSectionKey === sec.section_key
-                                ? 'bg-[#E8F4F1] text-[#00695C]'
-                                : 'text-[#64748B] hover:bg-[#F4F7F7] hover:text-[#0F172A]'"
+                                ? 'bg-[#E8F4F1] dark:bg-teal-900/50 text-[#00695C]'
+                                : 'text-[#64748B] dark:text-slate-400 hover:bg-[#F4F7F7] dark:bg-slate-950 hover:text-[#0F172A] dark:text-slate-100'"
                             @click="activeSectionKey = sec.section_key"
                         >
                             <span
                                 class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-                                :class="activeSectionKey === sec.section_key ? 'bg-white text-[#00695C]' : 'bg-[#F4F7F7] text-[#94A3B8]'"
+                                :class="activeSectionKey === sec.section_key ? 'bg-white dark:bg-slate-900 text-[#00695C]' : 'bg-[#F4F7F7] dark:bg-slate-950 text-[#94A3B8] dark:text-slate-500'"
                             >
                                 <LayoutTemplate class="h-4 w-4" />
                             </span>
-                            <span class="min-w-0 flex-1">
+                            <span class="min-w-0 flex-1 break-words">
                                 <span class="block text-sm font-semibold">{{ sidebarSectionLabel(sec.section_key) }}</span>
-                                <span class="mt-0.5 block text-[11px]" :class="activeSectionKey === sec.section_key ? 'text-[#47877D]' : 'text-[#94A3B8]'">
+                                <span class="mt-0.5 block text-[11px]" :class="activeSectionKey === sec.section_key ? 'text-[#47877D]' : 'text-[#94A3B8] dark:text-slate-500'">
                                     {{ sectionFieldCount(sec.section_key) }} fields
                                 </span>
                             </span>
@@ -539,13 +670,13 @@ const currentSectionLabel = computed(() =>
                             type="button"
                             class="flex min-w-max items-center gap-3 rounded-xl px-3 py-3 text-left transition lg:w-full"
                             :class="activeSectionKey === 'contact-integration'
-                                ? 'bg-[#E8F4F1] text-[#00695C]'
-                                : 'text-[#64748B] hover:bg-[#F4F7F7] hover:text-[#0F172A]'"
+                                ? 'bg-[#E8F4F1] dark:bg-teal-900/50 text-[#00695C]'
+                                : 'text-[#64748B] dark:text-slate-400 hover:bg-[#F4F7F7] dark:bg-slate-950 hover:text-[#0F172A] dark:text-slate-100'"
                             @click="activeSectionKey = 'contact-integration'"
                         >
                             <span
                                 class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-                                :class="activeSectionKey === 'contact-integration' ? 'bg-white text-[#00695C]' : 'bg-[#F4F7F7] text-[#94A3B8]'"
+                                :class="activeSectionKey === 'contact-integration' ? 'bg-white dark:bg-slate-900 text-[#00695C]' : 'bg-[#F4F7F7] dark:bg-slate-950 text-[#94A3B8] dark:text-slate-500'"
                             >
                                 <Settings2 class="h-4 w-4" />
                             </span>
@@ -553,12 +684,12 @@ const currentSectionLabel = computed(() =>
                         </button>
                     </nav>
 
-                    <div class="mt-4 hidden rounded-xl bg-[#F4F7F7] p-3 lg:block">
-                        <div class="flex items-center gap-2 text-xs font-semibold text-[#475569]">
+                    <div class="mt-4 hidden rounded-xl bg-[#F4F7F7] dark:bg-slate-950 p-3 lg:block">
+                        <div class="flex items-center gap-2 text-xs font-semibold text-[#475569] dark:text-slate-300">
                             <Sparkles class="h-4 w-4 text-[#00695C]" />
                             Quick tip
                         </div>
-                        <p class="mt-1.5 text-xs leading-5 text-[#64748B]">
+                        <p class="mt-1.5 text-xs leading-5 text-[#64748B] dark:text-slate-400">
                             Keep your content concise. You can save changes as you work.
                         </p>
                     </div>
@@ -570,31 +701,31 @@ const currentSectionLabel = computed(() =>
                 <div class="flex flex-wrap items-end justify-between gap-3">
                     <div>
                         <p class="text-xs font-semibold text-[#00695C]">EDITOR / CONTENT</p>
-                        <h2 class="mt-1 text-2xl font-bold tracking-tight text-[#0F172A]">
+                        <h2 class="mt-1 text-xl font-bold tracking-tight sm:text-2xl text-[#0F172A] dark:text-slate-100">
                             {{ currentSectionLabel }}
                         </h2>
-                        <p class="mt-1.5 text-sm leading-6 text-[#64748B]">
+                        <p class="mt-1.5 text-sm leading-6 text-[#64748B] dark:text-slate-400">
                             {{ activeSectionKey === 'contact-integration'
                                 ? 'Connect a Google Form to receive messages from your portfolio.'
                                 : `Customize the content displayed in your ${humanize(activeSectionKey).toLowerCase()} section.` }}
                         </p>
                     </div>
-                    <span class="inline-flex items-center gap-1.5 rounded-full border border-[#E1E8E7] bg-white px-3 py-1.5 text-xs font-medium text-[#64748B]">
+                    <span class="inline-flex items-center gap-1.5 rounded-full border border-[#E1E8E7] dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-medium text-[#64748B] dark:text-slate-400">
                         <Check class="h-3.5 w-3.5 text-[#16A34A]" />
                         {{ form.isDirty ? 'Unsaved changes' : 'All changes saved' }}
                     </span>
                 </div>
 
                 <!-- Google Forms integration -->
-                <div v-if="activeSectionKey === 'contact-integration'" class="overflow-hidden rounded-2xl border border-[#E1E8E7] bg-white shadow-[0_2px_8px_rgba(15,23,42,0.025)]">
-                    <div class="border-b border-[#EDF1F0] px-5 py-5 sm:px-6">
+                <div v-if="activeSectionKey === 'contact-integration'" class="overflow-hidden rounded-2xl border border-[#E1E8E7] dark:border-slate-800 bg-white dark:bg-slate-900 shadow-[0_2px_8px_rgba(15,23,42,0.025)]">
+                    <div class="border-b border-[#EDF1F0] dark:border-slate-800 px-5 py-5 sm:px-6">
                         <div class="flex items-start gap-3">
-                            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#E8F4F1] text-[#00695C]">
+                            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#E8F4F1] dark:bg-teal-900/50 text-[#00695C]">
                                 <Settings2 class="h-5 w-5" />
                             </span>
                             <div>
-                                <h3 class="font-bold text-[#0F172A]">Google Forms connection</h3>
-                                <p class="mt-1 text-sm leading-5 text-[#64748B]">
+                                <h3 class="font-bold text-[#0F172A] dark:text-slate-100">Google Forms connection</h3>
+                                <p class="mt-1 text-sm leading-5 text-[#64748B] dark:text-slate-400">
                                     Connect a form to receive portfolio contact submissions.
                                 </p>
                             </div>
@@ -602,48 +733,48 @@ const currentSectionLabel = computed(() =>
                     </div>
 
                     <div class="space-y-6 p-5 sm:p-6">
-                        <div class="rounded-xl border border-[#DCEBE6] bg-[#F5FAF8] p-4 text-sm leading-6 text-[#526B65]">
+                        <div class="rounded-xl border border-[#DCEBE6] dark:border-teal-900 bg-[#F5FAF8] dark:bg-teal-950/30 p-4 text-sm leading-6 text-[#526B65] dark:text-slate-300">
                             Create a Google Form with short-answer questions for name, email, and message. Use
-                            <span class="font-semibold text-[#0F172A]">More → Pre-fill form</span> to generate a link.
-                            The URL contains the numeric question IDs after each <code class="rounded bg-white px-1.5 py-0.5 text-xs text-[#00695C]">entry.</code>
+                            <span class="font-semibold text-[#0F172A] dark:text-slate-100">More → Pre-fill form</span> to generate a link.
+                            The URL contains the numeric question IDs after each <code class="rounded bg-white dark:bg-slate-900 px-1.5 py-0.5 text-xs text-[#00695C]">entry.</code>
                             Paste that URL below and enter the matching IDs.
                         </div>
 
                         <div class="space-y-2">
-                            <Label for="google_form_url" class="text-sm font-semibold text-[#334155]">Pre-filled Google Form URL</Label>
+                            <Label for="google_form_url" class="text-sm font-semibold text-[#334155] dark:text-slate-200">Pre-filled Google Form URL</Label>
                             <Input
                                 id="google_form_url"
                                 v-model="form.google_form_url"
                                 type="url"
                                 placeholder="https://docs.google.com/forms/d/e/…/viewform?usp=pp_url"
-                                class="h-11 rounded-xl border-[#DCE6E4] bg-white focus-visible:ring-[#00695C]/20"
+                                class="h-11 rounded-xl border-[#DCE6E4] dark:border-slate-700 bg-white focus-visible:ring-[#00695C]/30 dark:focus-visible:ring-teal-400/30 text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
                             />
-                            <p v-if="form.errors.google_form_url" class="text-sm text-red-600">{{ form.errors.google_form_url }}</p>
+                            <p v-if="form.errors.google_form_url" class="text-sm text-red-600 dark:text-red-400">{{ form.errors.google_form_url }}</p>
                         </div>
 
                         <div class="grid gap-4 sm:grid-cols-3">
                             <div class="space-y-2">
-                                <Label for="google_form_name_entry" class="text-sm font-semibold text-[#334155]">Name field ID</Label>
-                                <Input id="google_form_name_entry" v-model="form.google_form_name_entry" inputmode="numeric" placeholder="123456789" class="h-11 rounded-xl border-[#DCE6E4]" />
-                                <p v-if="form.errors.google_form_name_entry" class="text-xs text-red-600">{{ form.errors.google_form_name_entry }}</p>
+                                <Label for="google_form_name_entry" class="text-sm font-semibold text-[#334155] dark:text-slate-200">Name field ID</Label>
+                                <Input id="google_form_name_entry" v-model="form.google_form_name_entry" inputmode="numeric" placeholder="123456789" class="h-11 rounded-xl border-[#DCE6E4] dark:border-slate-700 bg-white text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 focus-visible:ring-[#00695C]/30" />
+                                <p v-if="form.errors.google_form_name_entry" class="text-xs text-red-600 dark:text-red-400">{{ form.errors.google_form_name_entry }}</p>
                             </div>
                             <div class="space-y-2">
-                                <Label for="google_form_email_entry" class="text-sm font-semibold text-[#334155]">Email field ID</Label>
-                                <Input id="google_form_email_entry" v-model="form.google_form_email_entry" inputmode="numeric" placeholder="234567890" class="h-11 rounded-xl border-[#DCE6E4]" />
-                                <p v-if="form.errors.google_form_email_entry" class="text-xs text-red-600">{{ form.errors.google_form_email_entry }}</p>
+                                <Label for="google_form_email_entry" class="text-sm font-semibold text-[#334155] dark:text-slate-200">Email field ID</Label>
+                                <Input id="google_form_email_entry" v-model="form.google_form_email_entry" inputmode="numeric" placeholder="234567890" class="h-11 rounded-xl border-[#DCE6E4] dark:border-slate-700 bg-white text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 focus-visible:ring-[#00695C]/30" />
+                                <p v-if="form.errors.google_form_email_entry" class="text-xs text-red-600 dark:text-red-400">{{ form.errors.google_form_email_entry }}</p>
                             </div>
                             <div class="space-y-2">
-                                <Label for="google_form_message_entry" class="text-sm font-semibold text-[#334155]">Message field ID</Label>
-                                <Input id="google_form_message_entry" v-model="form.google_form_message_entry" inputmode="numeric" placeholder="345678901" class="h-11 rounded-xl border-[#DCE6E4]" />
-                                <p v-if="form.errors.google_form_message_entry" class="text-xs text-red-600">{{ form.errors.google_form_message_entry }}</p>
+                                <Label for="google_form_message_entry" class="text-sm font-semibold text-[#334155] dark:text-slate-200">Message field ID</Label>
+                                <Input id="google_form_message_entry" v-model="form.google_form_message_entry" inputmode="numeric" placeholder="345678901" class="h-11 rounded-xl border-[#DCE6E4] dark:border-slate-700 bg-white text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 focus-visible:ring-[#00695C]/30" />
+                                <p v-if="form.errors.google_form_message_entry" class="text-xs text-red-600 dark:text-red-400">{{ form.errors.google_form_message_entry }}</p>
                             </div>
                         </div>
 
-                        <div class="flex items-start gap-3 border-t border-[#EDF1F0] pt-5">
-                            <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#E8F4F1] text-[#00695C]">
+                        <div class="flex items-start gap-3 border-t border-[#EDF1F0] dark:border-slate-800 pt-5">
+                            <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#E8F4F1] dark:bg-teal-900/50 text-[#00695C]">
                                 <Check class="h-3 w-3" />
                             </span>
-                            <p class="text-xs leading-5 text-[#64748B]">
+                            <p class="text-xs leading-5 text-[#64748B] dark:text-slate-400">
                                 Leave all four fields empty to disable Google Forms. Save changes to apply the connection.
                                 This setup is included in the downloaded portfolio.
                             </p>
@@ -654,41 +785,41 @@ const currentSectionLabel = computed(() =>
                 <!-- Dynamic template section fields -->
                 <div
                     v-if="activePortfolioSection"
-                    class="overflow-hidden rounded-2xl border border-[#E1E8E7] bg-white shadow-[0_2px_8px_rgba(15,23,42,0.025)]"
+                    class="overflow-hidden rounded-2xl border border-[#E1E8E7] dark:border-slate-800 bg-white dark:bg-slate-900 shadow-[0_2px_8px_rgba(15,23,42,0.025)]"
                 >
-                    <div class="flex flex-col gap-4 border-b border-[#EDF1F0] px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                    <div class="flex flex-col gap-4 border-b border-[#EDF1F0] dark:border-slate-800 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
                         <div class="flex items-center gap-3">
-                            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#E8F4F1] text-[#00695C]">
+                            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#E8F4F1] dark:bg-teal-900/50 text-[#00695C]">
                                 <LayoutTemplate class="h-5 w-5" />
                             </span>
                             <div>
-                                <h3 class="font-bold text-[#0F172A]">{{ currentSectionLabel }} content</h3>
-                                <p class="mt-1 text-sm text-[#64748B]">Using the {{ portfolio.template.name }} template</p>
+                                <h3 class="font-bold text-[#0F172A] dark:text-slate-100">{{ currentSectionLabel }} content</h3>
+                                <p class="mt-1 text-sm text-[#64748B] dark:text-slate-400">Using the {{ portfolio.template.name }} template</p>
                             </div>
                         </div>
 
-                        <label class="inline-flex cursor-pointer items-center gap-3 self-start rounded-xl border border-[#E1E8E7] bg-[#F8FAFA] px-3 py-2.5 sm:self-auto">
-                            <span class="text-sm font-semibold text-[#475569]">Section enabled</span>
+                        <label class="inline-flex cursor-pointer items-center gap-3 self-start rounded-xl border border-[#E1E8E7] dark:border-slate-800 bg-[#F8FAFA] dark:bg-slate-800/70 px-3 py-2.5 sm:self-auto">
+                            <span class="text-sm font-semibold text-[#475569] dark:text-slate-300">Section enabled</span>
                             <input
                                 id="enable_section"
                                 v-model="activePortfolioSection.is_enabled"
                                 type="checkbox"
                                 class="peer sr-only"
                             />
-                            <span class="relative h-5 w-9 rounded-full bg-[#CBD5E1] transition peer-checked:bg-[#00695C] after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow-sm after:transition after:content-[''] peer-checked:after:translate-x-4" />
+                            <span class="relative h-5 w-9 rounded-full bg-[#CBD5E1] transition peer-checked:bg-[#00695C] after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white dark:bg-slate-900 after:shadow-sm after:transition after:content-[''] peer-checked:after:translate-x-4" />
                         </label>
                     </div>
 
                     <div class="p-5 sm:p-6">
                         <div
                             v-if="!activePortfolioSection.is_enabled"
-                            class="rounded-xl border border-dashed border-[#DCE6E4] bg-[#F8FAFA] px-5 py-12 text-center"
+                            class="rounded-xl border border-dashed border-[#DCE6E4] dark:border-slate-700 bg-[#F8FAFA] dark:bg-slate-800/70 px-5 py-12 text-center"
                         >
-                            <span class="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-white text-[#94A3B8] shadow-sm">
+                            <span class="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-white dark:bg-slate-900 text-[#94A3B8] dark:text-slate-500 shadow-sm">
                                 <Eye class="h-5 w-5" />
                             </span>
-                            <h4 class="mt-4 font-semibold text-[#334155]">This section is hidden</h4>
-                            <p class="mt-1 text-sm text-[#64748B]">Enable this section to show it on your portfolio website.</p>
+                            <h4 class="mt-4 font-semibold text-[#334155] dark:text-slate-200">This section is hidden</h4>
+                            <p class="mt-1 text-sm text-[#64748B] dark:text-slate-400">Enable this section to show it on your portfolio website.</p>
                         </div>
 
                         <div v-else class="space-y-7">
@@ -702,11 +833,11 @@ const currentSectionLabel = computed(() =>
                                     class="space-y-2.5"
                                 >
                                     <div class="flex flex-wrap items-center justify-between gap-2">
-                                        <Label :for="fieldConfig.field_definition.field_key" class="text-sm font-semibold text-[#334155]">
+                                        <Label :for="fieldConfig.field_definition.field_key" class="text-sm font-semibold text-[#334155] dark:text-slate-200">
                                             {{ fieldConfig.field_definition.label }}
                                             <span v-if="fieldConfig.is_required" class="ml-0.5 text-[#00695C]">*</span>
                                         </Label>
-                                        <span class="rounded-md bg-[#F4F7F7] px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#94A3B8]">
+                                        <span class="rounded-md bg-[#F4F7F7] dark:bg-slate-950 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#94A3B8] dark:text-slate-500">
                                             {{ fieldConfig.field_definition.data_type.replace('_', ' ') }}
                                         </span>
                                     </div>
@@ -722,64 +853,75 @@ const currentSectionLabel = computed(() =>
                                                 ? 'Enter a URL, #section, mailto:, or tel: link'
                                                 : `Enter ${fieldConfig.field_definition.label.toLowerCase()}`
                                         "
-                                        class="h-11 rounded-xl border-[#DCE6E4] bg-white focus-visible:ring-[#00695C]/20"
+                                        class="h-11 rounded-xl border-[#DCE6E4] dark:border-slate-700 bg-white focus-visible:ring-[#00695C]/30 dark:focus-visible:ring-teal-400/30 text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
                                     />
 
                                     <!-- Image upload -->
                                     <div v-else-if="fieldConfig.field_definition.data_type === 'image'" class="space-y-3">
-                                        <label class="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-[#BFD4CE] bg-[#F8FBFA] px-5 py-6 text-center transition hover:border-[#00695C] hover:bg-[#F2F8F6]">
-                                            <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-[#00695C] shadow-sm">
+                                        <label class="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-[#BFD4CE] dark:border-slate-700 bg-[#F8FBFA] dark:bg-slate-800/70 px-5 py-6 text-center transition hover:border-[#00695C] hover:bg-[#F2F8F6] dark:bg-teal-950/50">
+                                            <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-white dark:bg-slate-900 text-[#00695C] shadow-sm">
                                                 <ImageIcon class="h-5 w-5" />
                                             </span>
-                                            <span class="mt-3 text-sm font-semibold text-[#334155]">
-                                                {{ uploadingFiles[fieldConfig.field_definition.field_key] ? 'Uploading image…' : 'Choose an image to upload' }}
+                                            <span class="mt-3 text-sm font-semibold text-[#334155] dark:text-slate-200">
+                                                {{ uploadingFiles[fieldConfig.field_definition.field_key] ? 'Preparing image…' : 'Choose an image to upload' }}
                                             </span>
-                                            <span class="mt-1 text-xs text-[#94A3B8]">PNG, JPG, GIF or WebP · Maximum 10 MB</span>
+                                            <span class="mt-1 text-xs text-[#94A3B8] dark:text-slate-500">PNG, JPG, GIF or WebP · Images are optimized before saving · Maximum 10 MB</span>
                                             <input
                                                 type="file"
                                                 accept="image/jpeg,image/png,image/gif,image/webp"
                                                 :disabled="uploadingFiles[fieldConfig.field_definition.field_key]"
                                                 class="sr-only"
-                                                @change="(event: Event) => uploadFile(event, fieldConfig.field_definition.field_key, 'image', (url) => activeValues[fieldConfig.field_definition.id].value = url)"
+                                                @change="(event: Event) => uploadFile(event, fieldConfig.field_definition.field_key, 'image', () => activeValues[fieldConfig.field_definition.id].value, (value) => activeValues[fieldConfig.field_definition.id].value = value)"
                                             />
                                         </label>
-                                        <p v-if="uploadErrors[fieldConfig.field_definition.field_key]" class="text-sm text-red-600">{{ uploadErrors[fieldConfig.field_definition.field_key] }}</p>
+                                        <p v-if="uploadErrors[fieldConfig.field_definition.field_key]" class="text-sm text-red-600 dark:text-red-400">{{ uploadErrors[fieldConfig.field_definition.field_key] }}</p>
                                         <p v-if="uploadedFiles[fieldConfig.field_definition.field_key]" role="status" class="text-xs text-[#16734A]">
-                                            Uploaded: {{ uploadedFiles[fieldConfig.field_definition.field_key] }}. Save changes to apply it.
+                                            Selected: {{ uploadedFiles[fieldConfig.field_definition.field_key] }}. Save changes to upload and apply it.
                                         </p>
-                                        <div v-if="activeValues[fieldConfig.field_definition.id].value" class="flex items-center gap-3 rounded-xl border border-[#E1E8E7] bg-[#F8FAFA] p-3">
-                                            <img :src="activeValues[fieldConfig.field_definition.id].value" alt="Uploaded image preview" class="h-16 w-16 rounded-lg border border-[#E1E8E7] object-cover" />
-                                            <div class="min-w-0 flex-1">
-                                                <p class="text-xs font-semibold text-[#334155]">Current image</p>
-                                                <p class="mt-1 truncate text-xs text-[#94A3B8]">{{ activeValues[fieldConfig.field_definition.id].value }}</p>
+                                        <div v-if="activeValues[fieldConfig.field_definition.id].value" class="flex items-center gap-3 rounded-xl border border-[#E1E8E7] dark:border-slate-800 bg-[#F8FAFA] dark:bg-slate-800/70 p-3">
+                                            <img :src="assetPreviewUrl(activeValues[fieldConfig.field_definition.id].value)" alt="Uploaded image preview" class="h-16 w-16 rounded-lg border border-[#E1E8E7] dark:border-slate-800 object-cover" />
+                                            <div class="min-w-0 flex-1 break-words">
+                                                <p class="text-xs font-semibold text-[#334155] dark:text-slate-200">Image preview</p>
+                                                <p class="mt-1 truncate text-xs text-[#94A3B8] dark:text-slate-500">
+                                                    {{ uploadedFiles[fieldConfig.field_definition.field_key] || activeValues[fieldConfig.field_definition.id].value }}
+                                                </p>
                                             </div>
+                                            <button
+                                                type="button"
+                                                class="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
+                                                :aria-label="`Remove ${fieldConfig.field_definition.label}`"
+                                                @click="removeImage(activeValues[fieldConfig.field_definition.id].value, () => activeValues[fieldConfig.field_definition.id].value = null)"
+                                            >
+                                                <Trash2 class="h-3.5 w-3.5" />
+                                                Remove
+                                            </button>
                                         </div>
                                     </div>
 
                                     <!-- File upload -->
                                     <div v-else-if="fieldConfig.field_definition.data_type === 'file'" class="space-y-3">
-                                        <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-[#BFD4CE] bg-[#F8FBFA] p-4 transition hover:border-[#00695C]">
-                                            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-[#00695C] shadow-sm">
+                                        <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-[#BFD4CE] dark:border-slate-700 bg-[#F8FBFA] dark:bg-slate-800/70 p-4 transition hover:border-[#00695C]">
+                                            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white dark:bg-slate-900 text-[#00695C] shadow-sm">
                                                 <Upload class="h-5 w-5" />
                                             </span>
-                                            <span class="min-w-0 flex-1">
-                                                <span class="block text-sm font-semibold text-[#334155]">
-                                                    {{ uploadingFiles[fieldConfig.field_definition.field_key] ? 'Uploading file…' : 'Choose a file' }}
+                                            <span class="min-w-0 flex-1 break-words">
+                                                <span class="block text-sm font-semibold text-[#334155] dark:text-slate-200">
+                                                        {{ uploadingFiles[fieldConfig.field_definition.field_key] ? 'Preparing file…' : 'Choose a file' }}
                                                 </span>
-                                                <span class="mt-1 block text-xs text-[#94A3B8]">PDF, DOC, DOCX, TXT or ZIP · Maximum 10 MB</span>
+                                                <span class="mt-1 block text-xs text-[#94A3B8] dark:text-slate-500">PDF, DOC, DOCX, TXT or ZIP · Maximum 10 MB</span>
                                             </span>
                                             <input
                                                 type="file"
                                                 accept=".pdf,.doc,.docx,.txt,.zip"
                                                 :disabled="uploadingFiles[fieldConfig.field_definition.field_key]"
                                                 class="sr-only"
-                                                @change="(event: Event) => uploadFile(event, fieldConfig.field_definition.field_key, 'file', (url) => activeValues[fieldConfig.field_definition.id].value = url)"
+                                                @change="(event: Event) => uploadFile(event, fieldConfig.field_definition.field_key, 'file', () => activeValues[fieldConfig.field_definition.id].value, (value) => activeValues[fieldConfig.field_definition.id].value = value)"
                                             />
                                         </label>
-                                        <p v-if="uploadErrors[fieldConfig.field_definition.field_key]" class="text-sm text-red-600">{{ uploadErrors[fieldConfig.field_definition.field_key] }}</p>
-                                        <p v-if="uploadedFiles[fieldConfig.field_definition.field_key]" role="status" class="text-xs text-[#16734A]">Uploaded: {{ uploadedFiles[fieldConfig.field_definition.field_key] }}. Save changes to apply it.</p>
-                                        <div v-if="activeValues[fieldConfig.field_definition.id].value" class="rounded-xl border border-[#E1E8E7] bg-[#F8FAFA] p-3 text-sm">
-                                            <a :href="activeValues[fieldConfig.field_definition.id].value" target="_blank" rel="noopener noreferrer" class="font-semibold text-[#00695C] hover:underline">View current file <ArrowUpRight class="inline h-3.5 w-3.5" /></a>
+                                        <p v-if="uploadErrors[fieldConfig.field_definition.field_key]" class="text-sm text-red-600 dark:text-red-400">{{ uploadErrors[fieldConfig.field_definition.field_key] }}</p>
+                                        <p v-if="uploadedFiles[fieldConfig.field_definition.field_key]" role="status" class="text-xs text-[#16734A]">Selected: {{ uploadedFiles[fieldConfig.field_definition.field_key] }}. Save changes to upload and apply it.</p>
+                                        <div v-if="activeValues[fieldConfig.field_definition.id].value" class="rounded-xl border border-[#E1E8E7] dark:border-slate-800 bg-[#F8FAFA] dark:bg-slate-800/70 p-3 text-sm">
+                                            <a :href="assetPreviewUrl(activeValues[fieldConfig.field_definition.id].value)" target="_blank" rel="noopener noreferrer" class="font-semibold text-[#00695C] hover:underline">View selected file <ArrowUpRight class="inline h-3.5 w-3.5" /></a>
                                         </div>
                                     </div>
 
@@ -789,12 +931,12 @@ const currentSectionLabel = computed(() =>
                                         v-model="activeValues[fieldConfig.field_definition.id].value"
                                         :rows="4"
                                         :placeholder="`Enter ${fieldConfig.field_definition.label.toLowerCase()}`"
-                                        class="min-h-[110px] resize-y rounded-xl border-[#DCE6E4] bg-white focus-visible:ring-[#00695C]/20"
+                                        class="min-h-[110px] resize-y rounded-xl border-[#DCE6E4] dark:border-slate-700 bg-white focus-visible:ring-[#00695C]/30 dark:focus-visible:ring-teal-400/30 text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
                                     />
 
-                                    <div v-else-if="fieldConfig.field_definition.data_type === 'boolean'" class="flex items-center gap-3 rounded-xl border border-[#E1E8E7] bg-[#F8FAFA] p-4">
+                                    <div v-else-if="fieldConfig.field_definition.data_type === 'boolean'" class="flex items-center gap-3 rounded-xl border border-[#E1E8E7] dark:border-slate-800 bg-[#F8FAFA] dark:bg-slate-800/70 p-4">
                                         <Checkbox :id="fieldConfig.field_definition.field_key" v-model:checked="activeValues[fieldConfig.field_definition.id].value" />
-                                        <span class="text-sm text-[#475569]">Enable this option</span>
+                                        <span class="text-sm text-[#475569] dark:text-slate-300">Enable this option</span>
                                     </div>
 
                                     <!-- Repeatable fields -->
@@ -802,15 +944,15 @@ const currentSectionLabel = computed(() =>
                                         <div
                                             v-for="(arrayItem, index) in (activeValues[fieldConfig.field_definition.id].value as any[])"
                                             :key="index"
-                                            class="rounded-xl border border-[#E1E8E7] bg-[#FBFCFC] p-4 sm:p-5"
+                                            class="rounded-xl border border-[#E1E8E7] dark:border-slate-800 bg-[#FBFCFC] dark:bg-slate-900 p-4 sm:p-5"
                                         >
-                                            <div class="mb-4 flex items-center justify-between border-b border-[#EDF1F0] pb-3">
-                                                <span class="text-xs font-bold uppercase tracking-wide text-[#64748B]">
+                                            <div class="mb-4 flex items-center justify-between border-b border-[#EDF1F0] dark:border-slate-800 pb-3">
+                                                <span class="text-xs font-bold uppercase tracking-wide text-[#64748B] dark:text-slate-400">
                                                     Item {{ Number(index) + 1 }}
                                                 </span>
                                                 <button
                                                     type="button"
-                                                    class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[#94A3B8] transition hover:bg-red-50 hover:text-red-600"
+                                                    class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[#94A3B8] dark:text-slate-500 transition hover:bg-red-50 dark:bg-red-950/30 dark:hover:bg-red-950/40 hover:text-red-600 dark:text-red-400"
                                                     @click="removeArrayItem(fieldConfig.field_definition.id, Number(index))"
                                                 >
                                                     <Trash2 class="h-3.5 w-3.5" />
@@ -821,10 +963,10 @@ const currentSectionLabel = computed(() =>
                                             <!-- Hero social links -->
                                             <div v-if="fieldConfig.field_definition.field_key === 'hero_social_links'" class="grid gap-4 sm:grid-cols-2">
                                                 <div class="space-y-2">
-                                                    <Label class="text-xs font-semibold text-[#64748B]">Platform / icon</Label>
+                                                    <Label class="text-xs font-semibold text-[#64748B] dark:text-slate-400">Platform / icon</Label>
                                                     <select
                                                         v-model="arrayItem.platform"
-                                                        class="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground"
+                                                        class="h-10 w-full rounded-lg border px-3 text-sm border-slate-300 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                                                     >
                                                         <option v-for="platform in socialPlatforms" :key="platform.value" :value="platform.value">
                                                             {{ platform.label }}
@@ -832,48 +974,48 @@ const currentSectionLabel = computed(() =>
                                                     </select>
                                                 </div>
                                                 <div class="space-y-2">
-                                                    <Label class="text-xs font-semibold text-[#64748B]">URL</Label>
-                                                    <Input v-model="arrayItem.url" placeholder="https://…" class="h-10 rounded-lg border-[#DCE6E4]" />
+                                                    <Label class="text-xs font-semibold text-[#64748B] dark:text-slate-400">URL</Label>
+                                                    <Input v-model="arrayItem.url" placeholder="https://…" class="h-10 rounded-lg border-[#DCE6E4] dark:border-slate-700 bg-white text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 focus-visible:ring-[#00695C]/30" />
                                                 </div>
                                             </div>
 
                                             <!-- About highlights / stats -->
                                             <div v-else-if="fieldConfig.field_definition.field_key === 'about_highlights'" class="grid gap-4 sm:grid-cols-2">
                                                 <div class="space-y-2">
-                                                    <Label class="text-xs font-semibold text-[#64748B]">Value</Label>
-                                                    <Input v-model="arrayItem.value" placeholder="e.g. 5+" class="h-10 rounded-lg border-[#DCE6E4]" />
+                                                    <Label class="text-xs font-semibold text-[#64748B] dark:text-slate-400">Value</Label>
+                                                    <Input v-model="arrayItem.value" placeholder="e.g. 5+" class="h-10 rounded-lg border-[#DCE6E4] dark:border-slate-700 bg-white text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 focus-visible:ring-[#00695C]/30" />
                                                 </div>
                                                 <div class="space-y-2">
-                                                    <Label class="text-xs font-semibold text-[#64748B]">Label</Label>
-                                                    <Input v-model="arrayItem.label" placeholder="e.g. Years of experience" class="h-10 rounded-lg border-[#DCE6E4]" />
+                                                    <Label class="text-xs font-semibold text-[#64748B] dark:text-slate-400">Label</Label>
+                                                    <Input v-model="arrayItem.label" placeholder="e.g. Years of experience" class="h-10 rounded-lg border-[#DCE6E4] dark:border-slate-700 bg-white text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 focus-visible:ring-[#00695C]/30" />
                                                 </div>
                                             </div>
 
                                             <!-- Contact social links -->
                                             <div v-else-if="fieldConfig.field_definition.field_key === 'contact_social_links'" class="grid gap-4 sm:grid-cols-2">
                                                 <div class="space-y-2">
-                                                    <Label class="text-xs font-semibold text-[#64748B]">Label / platform</Label>
-                                                    <Input v-model="arrayItem.label" placeholder="e.g. GitHub or Home" class="h-10 rounded-lg border-[#DCE6E4]" />
+                                                    <Label class="text-xs font-semibold text-[#64748B] dark:text-slate-400">Label / platform</Label>
+                                                    <Input v-model="arrayItem.label" placeholder="e.g. GitHub or Home" class="h-10 rounded-lg border-[#DCE6E4] dark:border-slate-700 bg-white text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 focus-visible:ring-[#00695C]/30" />
                                                 </div>
                                                 <div class="space-y-2">
-                                                    <Label class="text-xs font-semibold text-[#64748B]">URL</Label>
-                                                    <Input v-model="arrayItem.url" placeholder="https://…" class="h-10 rounded-lg border-[#DCE6E4]" />
+                                                    <Label class="text-xs font-semibold text-[#64748B] dark:text-slate-400">URL</Label>
+                                                    <Input v-model="arrayItem.url" placeholder="https://…" class="h-10 rounded-lg border-[#DCE6E4] dark:border-slate-700 bg-white text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 focus-visible:ring-[#00695C]/30" />
                                                 </div>
                                             </div>
 
                                             <!-- Skills -->
                                             <div v-else-if="fieldConfig.field_definition.field_key === 'skills_list'" class="grid gap-4 sm:grid-cols-3">
                                                 <div class="space-y-2">
-                                                    <Label class="text-xs font-semibold text-[#64748B]">Skill name</Label>
-                                                    <Input v-model="arrayItem.label" placeholder="e.g. Figma" class="h-10 rounded-lg border-[#DCE6E4]" />
+                                                    <Label class="text-xs font-semibold text-[#64748B] dark:text-slate-400">Skill name</Label>
+                                                    <Input v-model="arrayItem.label" placeholder="e.g. Figma" class="h-10 rounded-lg border-[#DCE6E4] dark:border-slate-700 bg-white text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 focus-visible:ring-[#00695C]/30" />
                                                 </div>
                                                 <div class="space-y-2">
-                                                    <Label class="text-xs font-semibold text-[#64748B]">Proficiency (%)</Label>
-                                                    <Input v-model.number="arrayItem.percent" type="number" min="0" max="100" placeholder="100" class="h-10 rounded-lg border-[#DCE6E4]" />
+                                                    <Label class="text-xs font-semibold text-[#64748B] dark:text-slate-400">Proficiency (%)</Label>
+                                                    <Input v-model.number="arrayItem.percent" type="number" min="0" max="100" placeholder="100" class="h-10 rounded-lg border-[#DCE6E4] dark:border-slate-700 bg-white text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 focus-visible:ring-[#00695C]/30" />
                                                 </div>
                                                 <div class="space-y-2">
-                                                    <Label class="text-xs font-semibold text-[#64748B]">Icon (optional)</Label>
-                                                    <Input v-model="arrayItem.icon" placeholder="e.g. figma or fa-brands fa-figma" class="h-10 rounded-lg border-[#DCE6E4]" />
+                                                    <Label class="text-xs font-semibold text-[#64748B] dark:text-slate-400">Icon (optional)</Label>
+                                                    <Input v-model="arrayItem.icon" placeholder="e.g. figma or fa-brands fa-figma" class="h-10 rounded-lg border-[#DCE6E4] dark:border-slate-700 bg-white text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 focus-visible:ring-[#00695C]/30" />
                                                 </div>
                                             </div>
 
@@ -881,65 +1023,76 @@ const currentSectionLabel = computed(() =>
                                             <div v-else-if="fieldConfig.field_definition.field_key === 'journey_list'" class="space-y-4">
                                                 <div class="grid gap-4 sm:grid-cols-2">
                                                     <div class="space-y-2">
-                                                        <Label class="text-xs font-semibold text-[#64748B]">Period / year</Label>
-                                                        <Input v-model="arrayItem.period" placeholder="e.g. 2023 - Present" class="h-10 rounded-lg border-[#DCE6E4]" />
+                                                        <Label class="text-xs font-semibold text-[#64748B] dark:text-slate-400">Period / year</Label>
+                                                        <Input v-model="arrayItem.period" placeholder="e.g. 2023 - Present" class="h-10 rounded-lg border-[#DCE6E4] dark:border-slate-700 bg-white text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 focus-visible:ring-[#00695C]/30" />
                                                     </div>
                                                     <div class="space-y-2">
-                                                        <Label class="text-xs font-semibold text-[#64748B]">Role / title</Label>
-                                                        <Input v-model="arrayItem.title" placeholder="e.g. Software Engineer" class="h-10 rounded-lg border-[#DCE6E4]" />
+                                                        <Label class="text-xs font-semibold text-[#64748B] dark:text-slate-400">Role / title</Label>
+                                                        <Input v-model="arrayItem.title" placeholder="e.g. Software Engineer" class="h-10 rounded-lg border-[#DCE6E4] dark:border-slate-700 bg-white text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 focus-visible:ring-[#00695C]/30" />
                                                     </div>
                                                 </div>
                                                 <div class="space-y-2">
-                                                    <Label class="text-xs font-semibold text-[#64748B]">Company / institution</Label>
-                                                    <Input v-model="arrayItem.company" placeholder="Company or institution name" class="h-10 rounded-lg border-[#DCE6E4]" />
+                                                    <Label class="text-xs font-semibold text-[#64748B] dark:text-slate-400">Company / institution</Label>
+                                                    <Input v-model="arrayItem.company" placeholder="Company or institution name" class="h-10 rounded-lg border-[#DCE6E4] dark:border-slate-700 bg-white text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 focus-visible:ring-[#00695C]/30" />
                                                 </div>
                                                 <div class="space-y-2">
-                                                    <Label class="text-xs font-semibold text-[#64748B]">Description</Label>
-                                                    <Textarea v-model="arrayItem.description" :rows="2" placeholder="What did you do or accomplish?" class="rounded-lg border-[#DCE6E4]" />
+                                                    <Label class="text-xs font-semibold text-[#64748B] dark:text-slate-400">Description</Label>
+                                                    <Textarea v-model="arrayItem.description" :rows="2" placeholder="What did you do or accomplish?" class="rounded-lg border-[#DCE6E4] dark:border-slate-700 bg-white text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 focus-visible:ring-[#00695C]/30" />
                                                 </div>
                                             </div>
 
                                             <!-- Projects -->
                                             <div v-else-if="fieldConfig.field_definition.field_key === 'projects_list'" class="space-y-4">
                                                 <div class="space-y-2">
-                                                    <Label class="text-xs font-semibold text-[#64748B]">Project title</Label>
-                                                    <Input v-model="arrayItem.title" placeholder="e.g. E-Commerce Dashboard" class="h-10 rounded-lg border-[#DCE6E4]" />
+                                                    <Label class="text-xs font-semibold text-[#64748B] dark:text-slate-400">Project title</Label>
+                                                    <Input v-model="arrayItem.title" placeholder="e.g. E-Commerce Dashboard" class="h-10 rounded-lg border-[#DCE6E4] dark:border-slate-700 bg-white text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 focus-visible:ring-[#00695C]/30" />
                                                 </div>
                                                 <div class="grid gap-4 sm:grid-cols-2">
                                                     <div class="space-y-2">
-                                                        <Label class="text-xs font-semibold text-[#64748B]">Category</Label>
-                                                        <Input v-model="arrayItem.category" placeholder="e.g. Web development" class="h-10 rounded-lg border-[#DCE6E4]" />
+                                                        <Label class="text-xs font-semibold text-[#64748B] dark:text-slate-400">Category</Label>
+                                                        <Input v-model="arrayItem.category" placeholder="e.g. Web development" class="h-10 rounded-lg border-[#DCE6E4] dark:border-slate-700 bg-white text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 focus-visible:ring-[#00695C]/30" />
                                                     </div>
                                                     <div class="space-y-2">
-                                                        <Label class="text-xs font-semibold text-[#64748B]">Project URL</Label>
-                                                        <Input v-model="arrayItem.url" placeholder="https://…" class="h-10 rounded-lg border-[#DCE6E4]" />
+                                                        <Label class="text-xs font-semibold text-[#64748B] dark:text-slate-400">Project URL</Label>
+                                                        <Input v-model="arrayItem.url" placeholder="https://…" class="h-10 rounded-lg border-[#DCE6E4] dark:border-slate-700 bg-white text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 focus-visible:ring-[#00695C]/30" />
                                                     </div>
                                                 </div>
                                                 <div class="space-y-2">
-                                                    <Label class="text-xs font-semibold text-[#64748B]">Description</Label>
-                                                    <Textarea v-model="arrayItem.description" :rows="2" placeholder="Short summary of the project" class="rounded-lg border-[#DCE6E4]" />
+                                                    <Label class="text-xs font-semibold text-[#64748B] dark:text-slate-400">Description</Label>
+                                                    <Textarea v-model="arrayItem.description" :rows="2" placeholder="Short summary of the project" class="rounded-lg border-[#DCE6E4] dark:border-slate-700 bg-white text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 focus-visible:ring-[#00695C]/30" />
                                                 </div>
-                                                <div class="flex items-center gap-3 rounded-lg border border-[#E1E8E7] bg-white px-3 py-2.5">
+                                                <div class="flex items-center gap-3 rounded-lg border border-[#E1E8E7] dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5">
                                                     <Checkbox :id="`project-featured-${index}`" v-model:checked="arrayItem.featured" />
-                                                    <Label :for="`project-featured-${index}`" class="text-xs font-semibold text-[#64748B]">Mark as featured</Label>
+                                                    <Label :for="`project-featured-${index}`" class="text-xs font-semibold text-[#64748B] dark:text-slate-400">Mark as featured</Label>
                                                 </div>
                                                 <div class="space-y-2">
-                                                    <Label class="text-xs font-semibold text-[#64748B]">Project image</Label>
-                                                    <label class="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-[#BFD4CE] bg-white p-3 transition hover:border-[#00695C]">
+                                                    <Label class="text-xs font-semibold text-[#64748B] dark:text-slate-400">Project image</Label>
+                                                    <label class="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-[#BFD4CE] dark:border-slate-700 bg-white dark:bg-slate-900 p-3 transition hover:border-[#00695C]">
                                                         <ImageIcon class="h-5 w-5 shrink-0 text-[#00695C]" />
-                                                        <span class="flex-1 text-sm font-medium text-[#475569]">Choose project image</span>
+                                                        <span class="flex-1 text-sm font-medium text-[#475569] dark:text-slate-300">Choose project image</span>
                                                         <input
                                                             type="file"
                                                             accept="image/jpeg,image/png,image/gif,image/webp"
                                                             :disabled="uploadingFiles[`project-image-${index}`]"
                                                             class="sr-only"
-                                                            @change="(event: Event) => uploadFile(event, `project-image-${index}`, 'image', (url) => arrayItem.image = url)"
+                                                            @change="(event: Event) => uploadFile(event, `project-image-${index}`, 'image', () => arrayItem.image, (value) => arrayItem.image = value)"
                                                         />
                                                     </label>
-                                                    <p v-if="uploadingFiles[`project-image-${index}`]" class="text-xs text-[#64748B]">Uploading image…</p>
-                                                    <p v-if="uploadErrors[`project-image-${index}`]" class="text-xs text-red-600">{{ uploadErrors[`project-image-${index}`] }}</p>
-                                                    <p v-if="uploadedFiles[`project-image-${index}`]" role="status" class="text-xs text-[#16734A]">Uploaded: {{ uploadedFiles[`project-image-${index}`] }}. Save changes to apply it.</p>
-                                                    <img v-if="arrayItem.image" :src="arrayItem.image" :alt="arrayItem.title || 'Project image preview'" class="h-20 w-28 rounded-lg border border-[#E1E8E7] object-cover" />
+                                                    <p v-if="uploadingFiles[`project-image-${index}`]" class="text-xs text-[#64748B] dark:text-slate-400">Preparing image…</p>
+                                                    <p v-if="uploadErrors[`project-image-${index}`]" class="text-xs text-red-600 dark:text-red-400">{{ uploadErrors[`project-image-${index}`] }}</p>
+                                                    <p v-if="uploadedFiles[`project-image-${index}`]" role="status" class="text-xs text-[#16734A]">Selected: {{ uploadedFiles[`project-image-${index}`] }}. Save changes to upload and apply it.</p>
+                                                    <div v-if="arrayItem.image" class="flex items-center gap-3">
+                                                        <img :src="assetPreviewUrl(arrayItem.image)" :alt="arrayItem.title || 'Project image preview'" class="h-20 w-28 rounded-lg border border-[#E1E8E7] dark:border-slate-800 object-cover" />
+                                                        <button
+                                                            type="button"
+                                                            class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
+                                                            :aria-label="`Remove image from ${arrayItem.title || `project ${Number(index) + 1}`}`"
+                                                            @click="removeImage(arrayItem.image, () => arrayItem.image = null)"
+                                                        >
+                                                            <Trash2 class="h-3.5 w-3.5" />
+                                                            Remove
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -947,33 +1100,33 @@ const currentSectionLabel = computed(() =>
                                             <div v-else-if="fieldConfig.field_definition.field_key === 'services_list'" class="space-y-4">
                                                 <div class="grid gap-4 sm:grid-cols-2">
                                                     <div class="space-y-2">
-                                                        <Label class="text-xs font-semibold text-[#64748B]">Service title</Label>
-                                                        <Input v-model="arrayItem.title" placeholder="e.g. Web Design" class="h-10 rounded-lg border-[#DCE6E4]" />
+                                                        <Label class="text-xs font-semibold text-[#64748B] dark:text-slate-400">Service title</Label>
+                                                        <Input v-model="arrayItem.title" placeholder="e.g. Web Design" class="h-10 rounded-lg border-[#DCE6E4] dark:border-slate-700 bg-white text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 focus-visible:ring-[#00695C]/30" />
                                                     </div>
                                                     <div class="space-y-2">
-                                                        <Label class="text-xs font-semibold text-[#64748B]">Icon (optional)</Label>
-                                                        <Input v-model="arrayItem.icon" placeholder="e.g. palette or fa-solid fa-palette" class="h-10 rounded-lg border-[#DCE6E4]" />
+                                                        <Label class="text-xs font-semibold text-[#64748B] dark:text-slate-400">Icon (optional)</Label>
+                                                        <Input v-model="arrayItem.icon" placeholder="e.g. palette or fa-solid fa-palette" class="h-10 rounded-lg border-[#DCE6E4] dark:border-slate-700 bg-white text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 focus-visible:ring-[#00695C]/30" />
                                                     </div>
                                                 </div>
                                                 <div class="space-y-2">
-                                                    <Label class="text-xs font-semibold text-[#64748B]">Description</Label>
-                                                    <Textarea v-model="arrayItem.description" :rows="2" placeholder="What does this service include?" class="rounded-lg border-[#DCE6E4]" />
+                                                    <Label class="text-xs font-semibold text-[#64748B] dark:text-slate-400">Description</Label>
+                                                    <Textarea v-model="arrayItem.description" :rows="2" placeholder="What does this service include?" class="rounded-lg border-[#DCE6E4] dark:border-slate-700 bg-white text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 focus-visible:ring-[#00695C]/30" />
                                                 </div>
                                                 <div class="space-y-2">
-                                                    <Label class="text-xs font-semibold text-[#64748B]">Link URL (optional)</Label>
-                                                    <Input v-model="arrayItem.url" placeholder="https://…" class="h-10 rounded-lg border-[#DCE6E4]" />
+                                                    <Label class="text-xs font-semibold text-[#64748B] dark:text-slate-400">Link URL (optional)</Label>
+                                                    <Input v-model="arrayItem.url" placeholder="https://…" class="h-10 rounded-lg border-[#DCE6E4] dark:border-slate-700 bg-white text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 focus-visible:ring-[#00695C]/30" />
                                                 </div>
                                             </div>
 
                                             <div v-else class="space-y-2">
-                                                <Label class="text-xs font-semibold text-[#64748B]">Value</Label>
-                                                <Input v-model="arrayItem.value" placeholder="Enter item value…" class="h-10 rounded-lg border-[#DCE6E4]" />
+                                                <Label class="text-xs font-semibold text-[#64748B] dark:text-slate-400">Value</Label>
+                                                <Input v-model="arrayItem.value" placeholder="Enter item value…" class="h-10 rounded-lg border-[#DCE6E4] dark:border-slate-700 bg-white text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 focus-visible:ring-[#00695C]/30" />
                                             </div>
                                         </div>
 
                                         <button
                                             type="button"
-                                            class="inline-flex h-10 items-center gap-2 rounded-xl border border-[#BFD4CE] bg-white px-3.5 text-sm font-semibold text-[#00695C] transition hover:bg-[#F0F7F5]"
+                                            class="inline-flex h-10 items-center gap-2 rounded-xl border border-[#BFD4CE] dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 text-sm font-semibold text-[#00695C] transition hover:bg-[#F0F7F5] dark:bg-teal-950/50"
                                             @click="addArrayItem(fieldConfig.field_definition.id, fieldConfig.field_definition.field_key)"
                                         >
                                             <Plus class="h-4 w-4" />
@@ -985,8 +1138,8 @@ const currentSectionLabel = computed(() =>
                         </div>
                     </div>
 
-                    <div class="flex flex-col gap-3 border-t border-[#EDF1F0] bg-[#FBFCFC] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-                        <p class="text-xs leading-5 text-[#94A3B8]">
+                    <div class="flex flex-col gap-3 border-t border-[#EDF1F0] dark:border-slate-800 bg-[#FBFCFC] dark:bg-slate-900 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                        <p class="text-xs leading-5 text-[#94A3B8] dark:text-slate-500">
                             Required fields are marked with <span class="font-semibold text-[#00695C]">*</span>.
                             Remember to save your changes.
                         </p>
@@ -998,38 +1151,38 @@ const currentSectionLabel = computed(() =>
                         >
                             <LoaderCircle v-if="form.processing" class="h-4 w-4 animate-spin" />
                             <Save v-else class="h-4 w-4" />
-                            {{ form.processing ? 'Saving changes…' : hasPendingUploads ? 'Upload in progress…' : 'Save changes' }}
+                            {{ form.processing ? 'Saving changes…' : hasPendingUploads ? 'Preparing upload…' : 'Save changes' }}
                         </button>
                     </div>
                 </div>
 
-                <div v-if="Object.keys(form.errors).length" class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                <div v-if="Object.keys(form.errors).length" class="rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 p-4 text-sm text-red-700 dark:text-red-300">
                     Some fields need your attention. Review the error messages above and try saving again.
                 </div>
             </section>
 
             <!-- Live summary preview -->
             <aside class="min-w-0">
-                <div class="rounded-2xl border border-[#E1E8E7] bg-white p-4 shadow-[0_2px_8px_rgba(15,23,42,0.025)] lg:sticky lg:top-[92px]">
+                <div class="rounded-2xl border border-[#E1E8E7] dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-[0_2px_8px_rgba(15,23,42,0.025)] lg:sticky lg:top-[92px]">
                     <div class="flex items-center justify-between gap-2 px-1 pb-4">
                         <div>
-                            <h2 class="text-sm font-bold text-[#0F172A]">Content overview</h2>
-                            <p class="mt-1 text-xs text-[#94A3B8]">A quick look at your sections</p>
+                            <h2 class="text-sm font-bold text-[#0F172A] dark:text-slate-100">Content overview</h2>
+                            <p class="mt-1 text-xs text-[#94A3B8] dark:text-slate-500">A quick look at your sections</p>
                         </div>
-                        <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-[#E8F4F1] text-[#00695C]">
+                        <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-[#E8F4F1] dark:bg-teal-900/50 text-[#00695C]">
                             <Eye class="h-4 w-4" />
                         </span>
                     </div>
 
-                    <div class="rounded-xl border border-[#E1E8E7] bg-[#F8FAFA] p-4">
-                        <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-[#E8F4F1] text-lg font-bold text-[#00695C]">
+                    <div class="rounded-xl border border-[#E1E8E7] dark:border-slate-800 bg-[#F8FAFA] dark:bg-slate-800/70 p-4">
+                        <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-[#E8F4F1] dark:bg-teal-900/50 text-lg font-bold text-[#00695C]">
                             {{ portfolio.title?.charAt(0)?.toUpperCase() || 'Q' }}
                         </div>
-                        <h3 class="mt-3 break-words text-base font-bold text-[#0F172A]">{{ portfolio.title }}</h3>
-                        <p class="mt-1 text-xs text-[#64748B]">{{ portfolio.template.name }}</p>
+                        <h3 class="mt-3 break-words text-base font-bold text-[#0F172A] dark:text-slate-100">{{ portfolio.title }}</h3>
+                        <p class="mt-1 text-xs text-[#64748B] dark:text-slate-400">{{ portfolio.template.name }}</p>
                         <div class="mt-3 flex items-center gap-2">
                             <span class="h-1.5 w-1.5 rounded-full" :class="portfolio.status === 'published' ? 'bg-[#16A34A]' : 'bg-[#D99A18]'" />
-                            <span class="text-xs font-medium capitalize text-[#64748B]">{{ portfolio.status }}</span>
+                            <span class="text-xs font-medium capitalize text-[#64748B] dark:text-slate-400">{{ portfolio.status }}</span>
                         </div>
                     </div>
 
@@ -1038,26 +1191,26 @@ const currentSectionLabel = computed(() =>
                             v-for="sec in form.sections"
                             :key="sec.id"
                             class="rounded-xl border p-3 transition"
-                            :class="activeSectionKey === sec.section_key ? 'border-[#BFD9D2] bg-[#F4FAF8]' : 'border-[#EDF1F0] bg-white'"
+                            :class="activeSectionKey === sec.section_key ? 'border-[#BFD9D2] dark:border-teal-800 bg-[#F4FAF8] dark:bg-teal-950/40' : 'border-[#EDF1F0] dark:border-slate-800 bg-white dark:bg-slate-900'"
                         >
                             <button
                                 type="button"
                                 class="flex w-full items-center gap-2 text-left"
                                 @click="activeSectionKey = sec.section_key"
                             >
-                                <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#F4F7F7] text-[#64748B]">
+                                <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#F4F7F7] dark:bg-slate-950 text-[#64748B] dark:text-slate-400">
                                     <LayoutTemplate class="h-3.5 w-3.5" />
                                 </span>
-                                <span class="min-w-0 flex-1 truncate text-xs font-semibold text-[#334155]">{{ sidebarSectionLabel(sec.section_key) }}</span>
+                                <span class="min-w-0 flex-1 truncate text-xs font-semibold text-[#334155] dark:text-slate-200">{{ sidebarSectionLabel(sec.section_key) }}</span>
                                 <span class="h-2 w-2 shrink-0 rounded-full" :class="sec.is_enabled ? 'bg-[#22A06B]' : 'bg-[#CBD5E1]'" />
                             </button>
 
-                            <div v-if="sec.is_enabled" class="mt-3 space-y-2 border-t border-[#EDF1F0] pt-3">
+                            <div v-if="sec.is_enabled" class="mt-3 space-y-2 border-t border-[#EDF1F0] dark:border-slate-800 pt-3">
                                 <div v-for="fv in sec.field_values" :key="fv.field_definition_id" class="min-w-0">
-                                    <p class="text-[10px] font-semibold uppercase tracking-wide text-[#94A3B8]">
+                                    <p class="text-[10px] font-semibold uppercase tracking-wide text-[#94A3B8] dark:text-slate-500">
                                         {{ fieldDefMap.get(fv.field_definition_id)?.label || 'Field' }}
                                     </p>
-                                    <p class="mt-0.5 break-words text-xs leading-5 text-[#64748B]">
+                                    <p class="mt-0.5 break-words text-xs leading-5 text-[#64748B] dark:text-slate-400">
                                         {{
                                             Array.isArray(fv.value)
                                                 ? `${fv.value.length} item${fv.value.length === 1 ? '' : 's'}`
@@ -1068,16 +1221,16 @@ const currentSectionLabel = computed(() =>
                                     </p>
                                 </div>
                             </div>
-                            <p v-else class="mt-2 text-[11px] text-[#94A3B8]">Hidden from portfolio</p>
+                            <p v-else class="mt-2 text-[11px] text-[#94A3B8] dark:text-slate-500">Hidden from portfolio</p>
                         </div>
                     </div>
 
-                    <div class="mt-4 rounded-xl border border-[#DCEBE6] bg-[#F5FAF8] p-3">
+                    <div class="mt-4 rounded-xl border border-[#DCEBE6] dark:border-teal-900 bg-[#F5FAF8] dark:bg-teal-950/30 p-3">
                         <div class="flex items-center gap-2 text-xs font-bold text-[#00695C]">
                             <Sparkles class="h-4 w-4" />
                             Keep it fresh
                         </div>
-                        <p class="mt-1.5 text-xs leading-5 text-[#64748B]">
+                        <p class="mt-1.5 text-xs leading-5 text-[#64748B] dark:text-slate-400">
                             Add meaningful details and use clear project images to make your portfolio stand out.
                         </p>
                     </div>
@@ -1087,15 +1240,15 @@ const currentSectionLabel = computed(() =>
 
         <!-- Template switch dialog -->
         <Dialog v-model:open="isSwitchModalOpen">
-            <DialogContent class="w-[calc(100%-2rem)] max-w-lg rounded-2xl border-[#E1E8E7] bg-white p-0">
-                <DialogHeader class="border-b border-[#EDF1F0] px-5 py-5 text-left sm:px-6">
+            <DialogContent class="max-h-[90dvh] w-[calc(100%-1rem)] max-w-lg overflow-y-auto rounded-2xl border-[#E1E8E7] dark:border-slate-800 bg-white dark:bg-slate-900 p-0 sm:w-[calc(100%-2rem)]">
+                <DialogHeader class="border-b border-[#EDF1F0] dark:border-slate-800 px-5 py-5 text-left sm:px-6">
                     <div class="flex items-center gap-3">
-                        <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-[#E8F4F1] text-[#00695C]">
+                        <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-[#E8F4F1] dark:bg-teal-900/50 text-[#00695C]">
                             <LayoutTemplate class="h-5 w-5" />
                         </span>
                         <div>
-                            <DialogTitle class="text-lg font-bold text-[#0F172A]">Change template</DialogTitle>
-                            <DialogDescription class="mt-1 text-sm leading-5 text-[#64748B]">
+                            <DialogTitle class="text-lg font-bold text-[#0F172A] dark:text-slate-100">Change template</DialogTitle>
+                            <DialogDescription class="mt-1 text-sm leading-5 text-[#64748B] dark:text-slate-400">
                                 Choose a different design for your portfolio. Compatible content will be preserved where possible.
                             </DialogDescription>
                         </div>
@@ -1103,25 +1256,25 @@ const currentSectionLabel = computed(() =>
                 </DialogHeader>
 
                 <div class="p-5 sm:p-6">
-                    <Label for="template_select" class="mb-2 block text-sm font-semibold text-[#334155]">Available templates</Label>
+                    <Label for="template_select" class="mb-2 block text-sm font-semibold text-[#334155] dark:text-slate-200">Available templates</Label>
                     <select
                         id="template_select"
                         v-model.number="selectedTemplateId"
-                        class="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm text-foreground outline-none transition focus:border-[#00695C] focus:ring-2 focus:ring-[#00695C]/15"
+                        class="h-11 w-full rounded-xl border px-3 text-sm outline-none transition focus:border-[#00695C] focus:ring-2 focus:ring-[#00695C]/15 border-slate-300 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                     >
                         <option v-for="template in availableTemplates" :key="template.id" :value="template.id">
                             {{ template.name }}<template v-if="template.category"> — {{ template.category.name }}</template>
                         </option>
                     </select>
-                    <p class="mt-2 text-xs leading-5 text-[#94A3B8]">
+                    <p class="mt-2 text-xs leading-5 text-[#94A3B8] dark:text-slate-500">
                         Your current template is {{ portfolio.template.name }}.
                     </p>
                 </div>
 
-                <DialogFooter class="border-t border-[#EDF1F0] bg-[#FBFCFC] px-5 py-4 sm:px-6">
+                <DialogFooter class="border-t border-[#EDF1F0] dark:border-slate-800 bg-[#FBFCFC] dark:bg-slate-900 px-5 py-4 sm:px-6">
                     <button
                         type="button"
-                        class="inline-flex h-10 items-center justify-center rounded-xl border border-[#DCE6E4] bg-white px-4 text-sm font-semibold text-[#475569] transition hover:bg-[#F4F7F7]"
+                        class="inline-flex h-10 items-center justify-center rounded-xl border border-[#DCE6E4] dark:border-slate-700 bg-white dark:bg-slate-900 px-4 text-sm font-semibold text-[#475569] dark:text-slate-300 transition hover:bg-[#F4F7F7] dark:bg-slate-950"
                         @click="isSwitchModalOpen = false"
                     >
                         Cancel

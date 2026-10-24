@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { getTemplateComponent } from '@/components/Templates/TemplateRegistry';
-import { Button } from '@/components/ui/button';
 import { Head, Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 

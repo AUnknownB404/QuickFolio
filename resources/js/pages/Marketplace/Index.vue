@@ -126,22 +126,6 @@ const createPortfolio = () => {
                     <AppLogo size="md" />
                 </Link>
 
-                <nav class="hidden items-center gap-8 md:flex">
-                    <Link
-                        :href="route('home') + '#features'"
-                        class="text-sm font-medium text-[#64748B] transition hover:text-[#00695C]"
-                    >
-                        Features
-                    </Link>
-
-                    <Link
-                        :href="route('templates.index')"
-                        class="text-sm font-semibold text-[#00695C]"
-                    >
-                        Templates
-                    </Link>
-                </nav>
-
                 <Link
                     :href="route('dashboard')"
                     class="inline-flex items-center justify-center rounded-xl bg-[#00695C] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#00574D]"
