@@ -396,7 +396,7 @@ const socialIconFor = (platform?: string): Component =>
     (platform ? socialIconMap[platform.toLowerCase().replace(/[^a-z]/g, '')] : undefined) ?? Globe;
 
 /* ------------------------------------------------------------------ */
-/* Contact form (Google Form when configured, otherwise a mailto)      */
+/* Contact form (Google Form when configured, mailto fallback otherwise)   */
 /* ------------------------------------------------------------------ */
 
 const gf = computed(() => {
@@ -411,7 +411,7 @@ const gf = computed(() => {
     };
 });
 const gfReady = computed(() => !!(gf.value.url && gf.value.name && gf.value.email && gf.value.message));
-const formEnabled = computed(() => flag('contact', 'contact_form_enabled', true) && (gfReady.value || !!email.value));
+const formEnabled = computed(() => flag('contact', 'contact_form_enabled', true));
 const formAction = computed(() => (gf.value.url ?? '').replace(/\/viewform.*$/, '/formResponse'));
 const fName = ref('');
 const fEmail = ref('');
@@ -424,22 +424,26 @@ const onSubmit = (e: Event) => {
         formStatus.value = 'Please fill in your name, email and message.';
         return;
     }
-    const who = fName.value.trim();
-    if (gfReady.value) {
-        // Google answers inside the hidden iframe; its result can't be read, so confirm optimistically.
-        sending.value = true;
-        window.setTimeout(() => {
-            sending.value = false;
-            formStatus.value = `Thanks, ${who}! Your message was submitted.`;
-            fName.value = fEmail.value = fMessage.value = '';
-        }, 650);
+    if (!gfReady.value) {
+        e.preventDefault();
+        if (!email.value) {
+            formStatus.value = 'This form is not connected yet. Please use another contact method.';
+            return;
+        }
+
+        const body = `${fMessage.value.trim()}\n\n${fName.value.trim()} (${fEmail.value.trim()})`;
+        window.location.href = `mailto:${encodeURIComponent(email.value)}?subject=${encodeURIComponent(`Message from ${fName.value.trim()}`)}&body=${encodeURIComponent(body)}`;
+        formStatus.value = 'Opening your email app to send this message.';
         return;
     }
-    e.preventDefault();
-    const body = `${fMessage.value}\n\n${who} (${fEmail.value})`;
-    window.location.href = `mailto:${email.value}?subject=${encodeURIComponent(`Message from ${who}`)}&body=${encodeURIComponent(body)}`;
-    formStatus.value = `Thanks, ${who}! Your email app should open with your message.`;
-    fName.value = fEmail.value = fMessage.value = '';
+
+    // Google answers inside the hidden iframe; its result can't be read, so confirm optimistically.
+    sending.value = true;
+    window.setTimeout(() => {
+        sending.value = false;
+        formStatus.value = `Thanks, ${fName.value.trim()}! Your message was submitted.`;
+        fName.value = fEmail.value = fMessage.value = '';
+    }, 650);
 };
 
 /* ------------------------------------------------------------------ */
@@ -963,15 +967,15 @@ const year = new Date().getFullYear();
                             v-if="formEnabled"
                             data-reveal
                             style="--d: 100ms"
-                            :action="gfReady ? formAction : undefined"
-                            :method="gfReady ? 'POST' : undefined"
-                            :target="gfReady ? 'ak-gform-frame' : undefined"
+                            :action="formAction"
+                            method="POST"
+                            target="ak-gform-frame"
                             class="ak-card flex flex-col gap-3 rounded-3xl p-3"
                             @submit="onSubmit"
                         >
-                            <input v-model="fName" :name="gfReady ? `entry.${gf.name}` : 'name'" type="text" placeholder="Name" aria-label="Name" autocomplete="name" class="ak-input" />
-                            <input v-model="fEmail" :name="gfReady ? `entry.${gf.email}` : 'email'" type="email" placeholder="Email" aria-label="Email" autocomplete="email" class="ak-input" />
-                            <textarea v-model="fMessage" :name="gfReady ? `entry.${gf.message}` : 'message'" placeholder="Message" aria-label="Message" class="ak-input min-h-[200px] flex-1" />
+                            <input v-model="fName" :name="`entry.${gf.name}`" type="text" placeholder="Name" aria-label="Name" autocomplete="name" class="ak-input" />
+                            <input v-model="fEmail" :name="`entry.${gf.email}`" type="email" placeholder="Email" aria-label="Email" autocomplete="email" class="ak-input" />
+                            <textarea v-model="fMessage" :name="`entry.${gf.message}`" placeholder="Message" aria-label="Message" class="ak-input min-h-[200px] flex-1" />
                             <button type="submit" class="ak-btn-solid w-full justify-center !rounded-xl !py-3.5" :disabled="sending">{{ sending ? 'Sending…' : 'Submit' }}</button>
                             <p class="ak-muted min-h-[1.2em] px-1 text-sm" role="status">{{ formStatus }}</p>
                             <iframe v-if="gfReady" name="ak-gform-frame" title="Form submission target" class="hidden" tabindex="-1" aria-hidden="true" />

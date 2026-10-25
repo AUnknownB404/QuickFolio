@@ -12,6 +12,7 @@
  * small UI labels (nav / button / form chrome) and structural fallbacks.
  */
 import { resolvePortfolioMediaUrl } from '@/lib/media';
+import { handleContactFormFallback } from '@/lib/contact-form-fallback';
 import {
     ArrowUpRight,
     AtSign,
@@ -369,7 +370,7 @@ const gf = computed(() => {
     };
 });
 const formReady = computed(
-    () => flag('contact', 'contact_form_enabled', true) && !!(gf.value.url && gf.value.name && gf.value.email && gf.value.message),
+    () => flag('contact', 'contact_form_enabled', true),
 );
 const formAction = computed(() => (gf.value.url ?? '').replace(/\/viewform.*$/, '/formResponse'));
 const sent = ref(false);
@@ -840,7 +841,7 @@ const year = new Date().getFullYear();
                                 method="POST"
                                 target="nb-gform-frame"
                                 class="nb-form space-y-5 p-6 sm:p-8"
-                                @submit="onSubmit"
+                                @submit="gf.url && gf.name && gf.email && gf.message ? onSubmit($event) : handleContactFormFallback($event, text('contact', 'contact_email'))"
                             >
                                 <label class="block">
                                     <span class="mb-2 block text-sm font-semibold">Name</span>

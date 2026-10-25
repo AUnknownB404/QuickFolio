@@ -83,6 +83,40 @@ class PortfolioBuilderTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_using_a_template_creates_a_portfolio_with_demo_content(): void
+    {
+        $this->seed();
+        $user = User::factory()->create();
+        $template = Template::published()
+            ->with('sections.fields.fieldDefinition')
+            ->firstOrFail();
+
+        $response = $this->actingAs($user)
+            ->post(route('templates.use', $template->slug), [
+                'title' => 'My Portfolio',
+            ]);
+
+        $portfolio = Portfolio::where('user_id', $user->id)->firstOrFail();
+        $heroName = $portfolio->sections()
+            ->where('section_key', 'header')
+            ->with('fieldValues.fieldDefinition')
+            ->firstOrFail()
+            ->fieldValues
+            ->first(fn (PortfolioFieldValue $value) => $value->fieldDefinition->field_key === 'hero_name');
+        $projects = $portfolio->sections()
+            ->where('section_key', 'projects')
+            ->with('fieldValues.fieldDefinition')
+            ->firstOrFail()
+            ->fieldValues
+            ->first(fn (PortfolioFieldValue $value) => $value->fieldDefinition->field_key === 'projects_list');
+
+        $response->assertRedirect(route('portfolios.edit', $portfolio));
+        $this->assertNotNull($heroName);
+        $this->assertNotNull($projects);
+        $this->assertSame('Akash Hossen', $heroName->value);
+        $this->assertSame('Sales & Invoice Management System', $projects->value[0]['title']);
+    }
+
     public function test_ivory_editorial_template_is_seeded_and_previewable()
     {
         $this->seed();
@@ -606,6 +640,7 @@ class PortfolioBuilderTest extends TestCase
         $about = $portfolio->sections()->where('section_key', 'about')->firstOrFail();
         $heroImage = FieldDefinition::where('field_key', 'hero_image')->firstOrFail();
         $resumeFile = FieldDefinition::where('field_key', 'about_cv_file')->firstOrFail();
+        $aboutCtaUrl = FieldDefinition::where('field_key', 'about_cta_url')->firstOrFail();
 
         Storage::fake('r2');
         $r2Root = Storage::disk('r2')->path('');
@@ -620,6 +655,7 @@ class PortfolioBuilderTest extends TestCase
 
         $uploadId = str_repeat('a', 32);
         $fileUploadId = str_repeat('b', 32);
+        $ctaUploadId = str_repeat('c', 32);
         $response = $this->actingAs($user)->post(route('portfolios.update', $portfolio), [
             '_method' => 'PATCH',
             'sections' => [[
@@ -635,20 +671,25 @@ class PortfolioBuilderTest extends TestCase
                 'field_values' => [[
                     'field_definition_id' => $resumeFile->id,
                     'value' => "quickfolio-pending-upload:{$fileUploadId}",
+                ], [
+                    'field_definition_id' => $aboutCtaUrl->id,
+                    'value' => "quickfolio-pending-upload:{$ctaUploadId}",
                 ]],
             ]],
             'pending_uploads' => [
                 $uploadId => $this->fakeImage(),
                 $fileUploadId => UploadedFile::fake()->create('resume.pdf', 100, 'application/pdf'),
+                $ctaUploadId => UploadedFile::fake()->create('portfolio.pdf', 100, 'application/pdf'),
             ],
             'pending_upload_types' => [
                 $uploadId => 'image',
                 $fileUploadId => 'file',
+                $ctaUploadId => 'file',
             ],
         ]);
 
         $response->assertRedirect();
-        foreach ([[$header, $heroImage], [$about, $resumeFile]] as [$section, $field]) {
+        foreach ([[$header, $heroImage], [$about, $resumeFile], [$about, $aboutCtaUrl]] as [$section, $field]) {
             $savedValue = $section->fieldValues()
                 ->where('field_definition_id', $field->id)
                 ->firstOrFail()
@@ -855,6 +896,99 @@ class PortfolioBuilderTest extends TestCase
         } finally {
             $archive->close();
             unlink($archivePath);
+        }
+    }
+
+    public function test_portfolio_download_includes_contact_form_without_google_integration(): void
+    {
+        $this->seed();
+        $user = User::factory()->create();
+        $template = Template::where('slug', 'bento-grid')->firstOrFail();
+        $portfolio = app(PortfolioService::class)->createForUser($user, $template, 'No Contact Integration');
+
+        $response = $this->actingAs($user)->get(route('portfolios.download', $portfolio));
+        $response->assertDownload("portfolio-{$portfolio->slug}.zip");
+
+        $archivePath = tempnam(sys_get_temp_dir(), 'portfolio_export_test_');
+        $this->assertNotFalse($archivePath);
+        file_put_contents($archivePath, $response->streamedContent());
+
+        $archive = new ZipArchive;
+        $this->assertTrue($archive->open($archivePath));
+        try {
+            $html = $archive->getFromName('index.html');
+            $this->assertIsString($html);
+            $this->assertStringNotContainsString('data-google-form', $html);
+            $this->assertStringNotContainsString('bg-gform-frame', $html);
+            $this->assertStringContainsString('data-quickfolio-contact', $html);
+            $this->assertStringContainsString('This form is not connected yet.', $html);
+        } finally {
+            $archive->close();
+            unlink($archivePath);
+        }
+    }
+
+    public function test_all_template_downloads_include_contact_form_without_google_integration(): void
+    {
+        $this->seed();
+        $user = User::factory()->create();
+
+        foreach (Template::published()->get() as $template) {
+            $portfolio = app(PortfolioService::class)->createForUser($user, $template, "{$template->name} Contact Test");
+            $response = $this->actingAs($user)->get(route('portfolios.download', $portfolio));
+            $response->assertOk();
+            $response->assertDownload("portfolio-{$portfolio->slug}.zip");
+
+            $archivePath = tempnam(sys_get_temp_dir(), 'portfolio_export_test_');
+            $this->assertNotFalse($archivePath);
+            file_put_contents($archivePath, $response->streamedContent());
+
+            $archive = new ZipArchive;
+            $this->assertTrue($archive->open($archivePath), $template->slug);
+            try {
+                $html = $archive->getFromName('index.html');
+                $this->assertIsString($html, $template->slug);
+                $this->assertStringContainsString('data-quickfolio-contact', $html, $template->slug);
+            } finally {
+                $archive->close();
+                unlink($archivePath);
+            }
+        }
+    }
+
+    public function test_generic_template_downloads_keep_google_form_integration(): void
+    {
+        $this->seed();
+        $user = User::factory()->create();
+
+        foreach (['orbit-folio', 'widescreen-studio'] as $slug) {
+            $template = Template::where('slug', $slug)->firstOrFail();
+            $portfolio = app(PortfolioService::class)->createForUser($user, $template, "{$template->name} Form Test");
+            $portfolio->update([
+                'google_form_url' => 'https://docs.google.com/forms/d/e/form-id/viewform',
+                'google_form_name_entry' => '123',
+                'google_form_email_entry' => '456',
+                'google_form_message_entry' => '789',
+            ]);
+
+            $response = $this->actingAs($user)->get(route('portfolios.download', $portfolio));
+            $archivePath = tempnam(sys_get_temp_dir(), 'portfolio_export_test_');
+            $this->assertNotFalse($archivePath);
+            file_put_contents($archivePath, $response->streamedContent());
+
+            $archive = new ZipArchive;
+            $this->assertTrue($archive->open($archivePath), $slug);
+            try {
+                $html = $archive->getFromName('index.html');
+                $this->assertIsString($html, $slug);
+                $this->assertStringContainsString('data-quickfolio-google-contact', $html, $slug);
+                $this->assertStringContainsString('entry.123', $html, $slug);
+                $this->assertStringContainsString('entry.456', $html, $slug);
+                $this->assertStringContainsString('entry.789', $html, $slug);
+            } finally {
+                $archive->close();
+                unlink($archivePath);
+            }
         }
     }
 

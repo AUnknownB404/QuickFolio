@@ -10,6 +10,7 @@
  * Every visible value comes from the seeded field keys. Only small UI chrome labels are hardcoded.
  */
 import { resolvePortfolioMediaUrl } from '@/lib/media';
+import { handleContactFormFallback } from '@/lib/contact-form-fallback';
 import {
     ArrowDownRight,
     ArrowUpRight,
@@ -405,7 +406,7 @@ const gf = computed(() => {
     };
 });
 const formReady = computed(
-    () => flag('contact', 'contact_form_enabled', true) && !!(gf.value.url && gf.value.name && gf.value.email && gf.value.message),
+    () => flag('contact', 'contact_form_enabled', true),
 );
 const formAction = computed(() => (gf.value.url ?? '').replace(/\/viewform.*$/, '/formResponse'));
 const sent = ref(false);
@@ -889,7 +890,7 @@ const year = new Date().getFullYear();
                                 method="POST"
                                 target="sg-gform-frame"
                                 class="sg-form space-y-6 p-6 sm:p-8"
-                                @submit="onSubmit"
+                                @submit="gf.url && gf.name && gf.email && gf.message ? onSubmit($event) : handleContactFormFallback($event, text('contact', 'contact_email'))"
                             >
                                 <label class="block">
                                     <span class="sg-mono mb-2 block text-[0.75rem] font-medium uppercase tracking-wider">Name</span>

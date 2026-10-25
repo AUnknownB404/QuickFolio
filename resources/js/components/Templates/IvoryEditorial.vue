@@ -11,6 +11,7 @@
  * An array of `{ section_key, is_enabled, field_values: [...] }` is also accepted.
  */
 import { resolvePortfolioMediaUrl } from '@/lib/media';
+import { handleContactFormFallback } from '@/lib/contact-form-fallback';
 import { ArrowDown, ArrowUpRight, Check, Download, MapPin, Phone, Send } from 'lucide-vue-next';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
@@ -256,7 +257,7 @@ const gf = computed(() => {
     };
 });
 const formReady = computed(
-    () => flag('contact', 'contact_form_enabled', true) && !!(gf.value.url && gf.value.name && gf.value.email && gf.value.message),
+    () => flag('contact', 'contact_form_enabled', true),
 );
 const formAction = computed(() => (gf.value.url ?? '').replace(/\/viewform.*$/, '/formResponse'));
 const showContact = computed(() => isOn('contact') && (has('contact') || formReady.value));
@@ -687,7 +688,7 @@ const year = new Date().getFullYear();
 
                     <div v-if="formReady" class="lg:col-span-6">
                         <div data-reveal style="--d: 120ms">
-                            <form :action="formAction" method="POST" target="ie-gform-frame" class="ie-form p-7 sm:p-10" @submit="onSubmit">
+                            <form :action="gf.url && gf.name && gf.email && gf.message ? formAction : undefined" method="POST" target="ie-gform-frame" class="ie-form p-7 sm:p-10" @submit="gf.url && gf.name && gf.email && gf.message ? onSubmit($event) : handleContactFormFallback($event, text('contact', 'contact_email'))">
                                 <p class="ie-serif text-3xl">Send a message</p>
                                 <div class="mt-8 space-y-7">
                                     <label class="block">

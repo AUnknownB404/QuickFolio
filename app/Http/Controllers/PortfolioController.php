@@ -9,6 +9,7 @@ use App\Models\PortfolioSection;
 use App\Models\Template;
 use App\Services\GoogleFormIntegration;
 use App\Services\PortfolioService;
+use App\Services\TemplateDemoData;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -40,7 +41,7 @@ class PortfolioController extends Controller
         ]);
     }
 
-    public function store(Request $request, Template $template)
+    public function store(Request $request, Template $template, TemplateDemoData $demoData)
     {
         if (! $template->is_published) {
             abort(403, 'Template is not published.');
@@ -50,7 +51,13 @@ class PortfolioController extends Controller
             'title' => ['required', 'string', 'max:255'],
         ]);
 
-        $portfolio = $this->portfolioService->createForUser($request->user(), $template, $validated['title']);
+        $templateDemo = $demoData->forTemplate($template);
+        $portfolio = $this->portfolioService->createForUser(
+            $request->user(),
+            $template,
+            $validated['title'],
+            $templateDemo['content']
+        );
 
         return redirect()->route('portfolios.edit', $portfolio);
     }

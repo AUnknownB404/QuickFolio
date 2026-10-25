@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\FieldDefinition;
 use App\Models\Portfolio;
+use App\Models\PortfolioFieldValue;
 use App\Models\PortfolioSection;
 use App\Models\Template;
 use App\Models\User;
@@ -11,9 +13,16 @@ use Illuminate\Support\Str;
 
 class PortfolioService
 {
-    public function createForUser(User $user, Template $template, string $title): Portfolio
+    public function createForUser(User $user, Template $template, string $title, array $initialContent = []): Portfolio
     {
-        return DB::transaction(function () use ($user, $template, $title) {
+        return DB::transaction(function () use ($user, $template, $title, $initialContent) {
+            $template->loadMissing('sections');
+            $demoFieldKeys = collect($initialContent)
+                ->flatMap(fn (array $sectionContent) => array_keys($sectionContent))
+                ->unique()
+                ->all();
+            $fieldDefinitions = FieldDefinition::whereIn('field_key', $demoFieldKeys)->get()->keyBy('field_key');
+
             $slug = Str::slug($title);
             $count = Portfolio::where('slug', 'like', "{$slug}%")->count();
             if ($count > 0) {
@@ -31,12 +40,24 @@ class PortfolioService
 
             // Initialize portfolio sections from template sections
             foreach ($template->sections as $templateSection) {
-                PortfolioSection::create([
+                $portfolioSection = PortfolioSection::create([
                     'portfolio_id' => $portfolio->id,
                     'section_key' => $templateSection->section_key,
                     'is_enabled' => $templateSection->is_enabled,
                     'display_order' => $templateSection->display_order,
                 ]);
+
+                foreach ($initialContent[$templateSection->section_key] ?? [] as $fieldKey => $value) {
+                    $fieldDefinition = $fieldDefinitions->get($fieldKey);
+
+                    if ($fieldDefinition && $value !== null) {
+                        PortfolioFieldValue::create([
+                            'portfolio_section_id' => $portfolioSection->id,
+                            'field_definition_id' => $fieldDefinition->id,
+                            'value' => $value,
+                        ]);
+                    }
+                }
             }
 
             return $portfolio;

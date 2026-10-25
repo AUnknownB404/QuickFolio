@@ -137,7 +137,7 @@ class PortfolioExportController extends Controller
         $assets = $this->collectAssets($content, $portfolio);
         $brandFiles = $this->brandFiles();
         $googleForm = null;
-        if (in_array($templateSlug, ['bento-grid', 'cobalt-brutalist', 'command-deck', 'dark-orange-designer', 'emerald-minimalist', 'ivory-editorial', 'nebula-glass', 'newsprint', 'orbit-folio', 'paper-stack', 'stream-bands', 'swiss-grid', 'swiss-signal', 'tidepool'], true)) {
+        if (in_array($templateSlug, ['bento-grid', 'cobalt-brutalist', 'command-deck', 'dark-orange-designer', 'emerald-minimalist', 'ivory-editorial', 'nebula-glass', 'newsprint', 'orbit-folio', 'paper-stack', 'stream-bands', 'swiss-grid', 'swiss-signal', 'tidepool', 'widescreen-studio'], true)) {
             $responseUrl = GoogleFormIntegration::responseUrl($portfolio->google_form_url);
             $entryIds = [
                 $portfolio->google_form_name_entry,
@@ -290,10 +290,26 @@ class PortfolioExportController extends Controller
     private function renderPage(string $slug, string $title, array $content, array $assets, ?array $googleForm = null): string
     {
         $renderer = self::TEMPLATE_RENDERERS[$slug] ?? null;
-        if ($renderer !== null) {
-            return $this->{$renderer['page']}($title, $content, $assets, $googleForm);
+        if ($renderer !== null && method_exists($this, $renderer['page'])) {
+            $page = $this->{$renderer['page']}($title, $content, $assets, $googleForm);
+        } else {
+            $page = $this->renderGenericPage($slug, $title, $content, $assets);
         }
 
+        $contact = $this->sectionData($content['contact'] ?? []);
+        if (! in_array($contact['contact_form_enabled'] ?? true, [false, 0, '0', 'false'], true)) {
+            if ($googleForm === null) {
+                $page = $this->injectContactFallbackForm($page, $contact['contact_email'] ?? null);
+            } elseif ($renderer === null) {
+                $page = $this->injectGoogleContactForm($page, $googleForm);
+            }
+        }
+
+        return $page;
+    }
+
+    private function renderGenericPage(string $slug, string $title, array $content, array $assets): string
+    {
         $theme = self::TEMPLATE_THEMES[$slug] ?? 'emerald';
         $escape = fn (mixed $value): string => e(is_scalar($value) ? (string) $value : '');
         $assetUrl = fn (mixed $value): string => $this->assetUrl($value, $assets);
@@ -389,6 +405,91 @@ class PortfolioExportController extends Controller
     <script src="script.js" defer></script>
 </body>
 </html>';
+    }
+
+    private function injectContactFallbackForm(string $page, mixed $email): string
+    {
+        $escape = fn (mixed $value): string => e(is_scalar($value) ? (string) $value : '');
+        $form = '<form data-quickfolio-contact data-contact-email="'.$escape($email).'" style="display:grid;gap:1rem;max-width:42rem;margin:2rem auto;padding:1.5rem;border:1px solid #dce6e4;border-radius:1rem;background:#fff">'
+            .'<label style="display:grid;gap:.4rem">Name<input name="name" type="text" required autocomplete="name" style="width:100%;padding:.75rem;border:1px solid #cbd5d1;border-radius:.5rem"></label>'
+            .'<label style="display:grid;gap:.4rem">Email<input name="email" type="email" required autocomplete="email" style="width:100%;padding:.75rem;border:1px solid #cbd5d1;border-radius:.5rem"></label>'
+            .'<label style="display:grid;gap:.4rem">Message<textarea name="message" rows="5" required style="width:100%;padding:.75rem;border:1px solid #cbd5d1;border-radius:.5rem"></textarea></label>'
+            .'<button type="submit" style="padding:.75rem 1rem;border:0;border-radius:.5rem;background:#00695c;color:#fff;font-weight:600;cursor:pointer">Send message</button>'
+            .'<p data-contact-fallback-status role="status" aria-live="polite"></p></form>';
+        $script = '<script>document.querySelectorAll("[data-quickfolio-contact]").forEach(function(form){form.addEventListener("submit",function(event){event.preventDefault();var status=form.querySelector("[data-contact-fallback-status]");var email=form.dataset.contactEmail;if(!email){status.textContent="This form is not connected yet. Please use another contact method.";return;}var data=new FormData(form);var name=String(data.get("name")||"").trim();var sender=String(data.get("email")||"").trim();var message=String(data.get("message")||"").trim();var body=message+"\\n\\n"+name+" ("+sender+")";window.location.href="mailto:"+encodeURIComponent(email)+"?subject="+encodeURIComponent("Message from "+name)+"&body="+encodeURIComponent(body);status.textContent="Opening your email app to send this message.";});});</script>';
+
+        $page = $this->insertContactForm($page, $form);
+
+        if (! str_contains($page, 'data-quickfolio-contact')) {
+            return $page;
+        }
+
+        $bodyClose = strripos($page, '</body>');
+
+        return $bodyClose === false
+            ? $page.$script
+            : substr_replace($page, $script, $bodyClose, 0);
+    }
+
+    private function injectGoogleContactForm(string $page, array $googleForm): string
+    {
+        $escape = fn (mixed $value): string => e(is_scalar($value) ? (string) $value : '');
+        $form = '<form data-quickfolio-google-contact action="'.$escape($googleForm['action'] ?? '').'" method="POST" target="qf-google-contact-frame" style="display:grid;gap:1rem;max-width:42rem;margin:2rem auto;padding:1.5rem;border:1px solid #dce6e4;border-radius:1rem;background:#fff">'
+            .'<label style="display:grid;gap:.4rem">Name<input name="entry.'.$escape($googleForm['name_entry'] ?? '').'" type="text" required autocomplete="name" style="width:100%;padding:.75rem;border:1px solid #cbd5d1;border-radius:.5rem"></label>'
+            .'<label style="display:grid;gap:.4rem">Email<input name="entry.'.$escape($googleForm['email_entry'] ?? '').'" type="email" required autocomplete="email" style="width:100%;padding:.75rem;border:1px solid #cbd5d1;border-radius:.5rem"></label>'
+            .'<label style="display:grid;gap:.4rem">Message<textarea name="entry.'.$escape($googleForm['message_entry'] ?? '').'" rows="5" required style="width:100%;padding:.75rem;border:1px solid #cbd5d1;border-radius:.5rem"></textarea></label>'
+            .'<button type="submit" style="padding:.75rem 1rem;border:0;border-radius:.5rem;background:#00695c;color:#fff;font-weight:600;cursor:pointer">Send message</button>'
+            .'<p data-google-contact-status role="status" aria-live="polite"></p></form><iframe name="qf-google-contact-frame" title="Form submission target" hidden></iframe>';
+
+        $page = $this->insertContactForm($page, $form);
+        if (! str_contains($page, 'data-quickfolio-google-contact')) {
+            return $page;
+        }
+
+        $script = '<script>document.querySelectorAll("[data-quickfolio-google-contact]").forEach(function(form){form.addEventListener("submit",function(){var status=form.querySelector("[data-google-contact-status]");status.textContent="Submitting your message…";window.setTimeout(function(){status.textContent="Your message was submitted.";form.reset();},1200);});});</script>';
+        $bodyClose = strripos($page, '</body>');
+
+        return $bodyClose === false
+            ? $page.$script
+            : substr_replace($page, $script, $bodyClose, 0);
+    }
+
+    private function insertContactForm(string $page, string $form): string
+    {
+        $openingPosition = stripos($page, 'id="contact"');
+        if ($openingPosition === false) {
+            $contactSection = '<section id="contact"><h2>Contact</h2>'.$form.'</section>';
+            $mainClose = stripos($page, '</main>');
+            if ($mainClose !== false) {
+                return substr_replace($page, $contactSection, $mainClose, 0);
+            }
+
+            $footerStart = stripos($page, '<footer');
+
+            return $footerStart === false
+                ? $page.$contactSection
+                : substr_replace($page, $contactSection, $footerStart, 0);
+        }
+
+        $openingEnd = strpos($page, '>', $openingPosition);
+        if ($openingEnd === false) {
+            return $page;
+        }
+
+        preg_match_all('~</?section\b[^>]*>~i', $page, $sectionTags, PREG_OFFSET_CAPTURE, $openingEnd + 1);
+        $depth = 1;
+        foreach ($sectionTags[0] as [$tag, $offset]) {
+            if (str_starts_with(strtolower($tag), '</section')) {
+                $depth--;
+                if ($depth === 0) {
+                    return substr_replace($page, $form, $offset, 0);
+                }
+            } elseif (! str_ends_with(rtrim($tag), '/>')) {
+                $depth++;
+            }
+        }
+
+        return $page;
     }
 
     private function section(
@@ -739,7 +840,7 @@ class PortfolioExportController extends Controller
     private function stylesForTemplate(string $slug): string
     {
         $renderer = self::TEMPLATE_RENDERERS[$slug] ?? null;
-        if ($renderer !== null) {
+        if ($renderer !== null && method_exists($this, $renderer['styles'])) {
             return $this->{$renderer['styles']}();
         }
 

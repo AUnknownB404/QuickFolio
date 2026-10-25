@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { resolvePortfolioMediaUrl } from '@/lib/media';
+import { handleContactFormFallback } from '@/lib/contact-form-fallback';
 
 interface GoogleFormIntegration {
     url: string;
@@ -49,7 +50,7 @@ const googleForm = computed<GoogleFormIntegration | null>(() => {
         messageEntry: entryId(integration.google_form_message_entry)!,
     };
 });
-const formReady = computed(() => contact.value.contact_form_enabled !== false && !!googleForm.value);
+const formReady = computed(() => contact.value.contact_form_enabled !== false);
 const formAction = computed(() => (googleForm.value?.url ?? '').replace(/\/viewform.*$/, '/formResponse'));
 const sent = ref(false);
 const sending = ref(false);
@@ -385,7 +386,7 @@ const heroWords = computed(() => (hero.value.hero_name || '').split(' ').filter(
                     method="POST"
                     target="do-gform-frame"
                     class="mt-12 space-y-5 rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-6 text-left sm:p-8"
-                    @submit="onSubmit"
+                    @submit="googleForm ? onSubmit($event) : handleContactFormFallback($event, contact.contact_email)"
                 >
                     <h3 class="font-display text-2xl font-semibold text-[var(--paper)]">Send a message</h3>
                     <label class="block space-y-2 text-sm font-medium text-[var(--muted)]">

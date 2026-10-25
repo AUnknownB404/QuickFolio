@@ -9,6 +9,7 @@
  * Every visible value comes from the seeded field keys.
  */
 import { resolvePortfolioMediaUrl } from '@/lib/media';
+import { handleContactFormFallback } from '@/lib/contact-form-fallback';
 import {
     ArrowUpRight,
     AtSign,
@@ -375,7 +376,7 @@ const gf = computed(() => {
     };
 });
 const formReady = computed(
-    () => flag('contact', 'contact_form_enabled', true) && !!(gf.value.url && gf.value.name && gf.value.email && gf.value.message),
+    () => flag('contact', 'contact_form_enabled', true),
 );
 const formAction = computed(() => (gf.value.url ?? '').replace(/\/viewform.*$/, '/formResponse'));
 const sent = ref(false);
@@ -773,7 +774,7 @@ const year = new Date().getFullYear();
                     </div>
 
                     <div data-reveal style="--d: 100ms" class="p-6 sm:p-12 lg:col-span-5 lg:border-l lg:border-[color-mix(in_srgb,var(--paper)_28%,transparent)]">
-                        <form v-if="formReady" :action="formAction" method="POST" target="np-gform-frame" class="space-y-5" @submit="onSubmit">
+                        <form v-if="formReady" :action="gf.url && gf.name && gf.email && gf.message ? formAction : undefined" method="POST" target="np-gform-frame" class="space-y-5" @submit="gf.url && gf.name && gf.email && gf.message ? onSubmit($event) : handleContactFormFallback($event, text('contact', 'contact_email'))">
                             <label class="block">
                                 <span class="mb-2 block text-sm font-semibold">Name</span>
                                 <input :name="`entry.${gf.name}`" type="text" required autocomplete="name" class="np-input" />
