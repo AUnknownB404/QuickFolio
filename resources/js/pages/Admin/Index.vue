@@ -359,7 +359,16 @@ const runSearch = () => {
                                             </div>
                                         </div>
                                     </td>
-                                    <td class="px-5 py-4 text-sm text-slate-600">{{ user.portfolios_count }}</td>
+                                    <td class="px-5 py-4 text-sm text-slate-600">
+                                        <Link
+                                            v-if="user.portfolios_count > 0"
+                                            :href="route('admin.users.portfolios', { user: user.id })"
+                                            class="font-semibold text-emerald-800 hover:underline dark:text-emerald-300"
+                                        >
+                                            {{ user.portfolios_count }} · View
+                                        </Link>
+                                        <span v-else>0</span>
+                                    </td>
                                     <td class="px-5 py-4 text-sm text-slate-600">{{ new Date(user.created_at).toLocaleDateString() }}</td>
                                     <td class="px-5 py-4">
                                         <select

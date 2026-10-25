@@ -26,6 +26,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
         Route::get('/', [AdminController::class, 'index'])->name('dashboard');
+        Route::get('/users/{user}/portfolios', [AdminController::class, 'userPortfolios'])->name('users.portfolios');
+        Route::get('/portfolios/{portfolio}', [AdminController::class, 'showPortfolio'])->name('portfolios.show');
         Route::patch('/users/{user}/role', [AdminController::class, 'updateUserRole'])->name('users.role');
         Route::delete('/users/{user}', [AdminController::class, 'destroyUser'])->name('users.destroy');
         Route::get('/templates/{template}/download-demo', [PortfolioExportController::class, 'downloadDemo'])->name('templates.download-demo');

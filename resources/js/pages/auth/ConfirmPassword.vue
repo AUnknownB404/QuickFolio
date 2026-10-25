@@ -30,7 +30,7 @@ const submit = () => {
 
                 <!-- Logo -->
                 <Link href="/" class="flex items-center gap-3">
-                    <img src="/Logo.svg" alt="" class="h-12 w-12 shrink-0 object-contain" />
+                    <img src="/logo.svg" alt="" class="h-12 w-12 shrink-0 object-contain" />
 
                     <span class="text-3xl font-bold">
                         quick<span class="text-[#00695C]">Folio</span>
@@ -102,7 +102,7 @@ const submit = () => {
 
                     <!-- Mobile Logo -->
                     <Link href="/" class="flex items-center justify-center gap-2 mb-10 lg:hidden">
-                        <img src="/Logo.svg" alt="" class="h-10 w-10 shrink-0 object-contain" />
+                        <img src="/logo.svg" alt="" class="h-10 w-10 shrink-0 object-contain" />
 
                         <span class="text-2xl font-bold">
                             quick<span class="text-[#00695C]">Folio</span>
@@ -112,7 +112,7 @@ const submit = () => {
                     <div class="mb-8">
 
                         <div class="hidden lg:flex items-center gap-2 mb-8">
-                            <img src="/Logo.svg" alt="" class="h-10 w-10 shrink-0 object-contain" />
+                            <img src="/logo.svg" alt="" class="h-10 w-10 shrink-0 object-contain" />
 
                             <span class="text-2xl font-bold">
                                 quick<span class="text-[#00695C]">Folio</span>

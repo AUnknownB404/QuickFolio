@@ -44,7 +44,7 @@ const submit = () => {
             >
                 <!-- Logo -->
                 <Link href="/" class="flex items-center gap-3">
-                    <img src="/Logo.svg" alt="" class="h-12 w-12 shrink-0 object-contain" />
+                    <img src="/logo.svg" alt="" class="h-12 w-12 shrink-0 object-contain" />
 
                     <span class="text-3xl font-bold tracking-tight">
                         quick<span class="text-[#00695C]">Folio</span>
@@ -134,7 +134,7 @@ const submit = () => {
                         href="/"
                         class="mb-12 flex items-center justify-center gap-3 lg:hidden"
                     >
-                        <img src="/Logo.svg" alt="" class="h-10 w-10 shrink-0 object-contain" />
+                        <img src="/logo.svg" alt="" class="h-10 w-10 shrink-0 object-contain" />
 
                         <span class="text-2xl font-bold tracking-tight">
                             quick<span class="text-[#00695C]">Folio</span>

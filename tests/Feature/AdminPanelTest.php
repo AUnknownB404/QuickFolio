@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Portfolio;
 use App\Models\Template;
 use App\Models\TemplateCategory;
 use App\Models\User;
@@ -40,6 +41,73 @@ class AdminPanelTest extends TestCase
                 ->component('Admin/Index')
                 ->has('stats.users')
                 ->has('users.data', 1));
+    }
+
+    public function test_regular_users_cannot_view_user_portfolios_or_admin_portfolio_previews(): void
+    {
+        $user = User::factory()->create();
+        $owner = User::factory()->create();
+        $template = Template::create([
+            'name' => 'Emerald Minimalist',
+            'slug' => 'emerald-minimalist',
+            'is_published' => true,
+        ]);
+        $portfolio = Portfolio::create([
+            'user_id' => $owner->id,
+            'template_id' => $template->id,
+            'title' => 'Private Draft',
+            'slug' => 'private-draft',
+            'status' => 'draft',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('admin.users.portfolios', $owner))
+            ->assertForbidden();
+
+        $this->actingAs($user)
+            ->get(route('admin.portfolios.show', $portfolio))
+            ->assertForbidden();
+    }
+
+    public function test_administrators_can_view_a_users_draft_portfolio(): void
+    {
+        $admin = User::factory()->create();
+        $admin->role = 'admin';
+        $admin->save();
+        $owner = User::factory()->create();
+        $template = Template::create([
+            'name' => 'Emerald Minimalist',
+            'slug' => 'emerald-minimalist',
+            'is_published' => true,
+        ]);
+        $portfolio = Portfolio::create([
+            'user_id' => $owner->id,
+            'template_id' => $template->id,
+            'title' => 'Private Draft',
+            'slug' => 'private-draft',
+            'status' => 'draft',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.users.portfolios', $owner))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/UserPortfolios')
+                ->where('user.name', $owner->name)
+                ->has('portfolios.data', 1)
+                ->where('portfolios.data.0.title', 'Private Draft')
+                ->where('portfolios.data.0.status', 'draft'));
+
+        $this->actingAs($admin)
+            ->get(route('admin.portfolios.show', $portfolio))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Portfolios/PublicShow')
+                ->where('portfolio.status', 'draft')
+                ->where('adminPreview.userName', $owner->name)
+                ->where('adminPreview.portfoliosUrl', route('admin.users.portfolios', $owner)));
+
+        $this->get(route('portfolios.published', $portfolio->slug))->assertNotFound();
     }
 
     public function test_regular_users_cannot_download_a_template_demo_export(): void

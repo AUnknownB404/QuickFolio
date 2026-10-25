@@ -45,6 +45,10 @@ interface Portfolio {
 
 const props = defineProps<{
     portfolio: Portfolio;
+    adminPreview?: {
+        userName: string;
+        portfoliosUrl: string;
+    };
 }>();
 
 const portfolioContent = computed(() => {
@@ -72,6 +76,14 @@ const portfolioContent = computed(() => {
     <Head :title="`${portfolio.title} — Portfolio`" />
 
     <div class="flex min-h-screen flex-col bg-background font-sans text-foreground selection:bg-primary selection:text-primary-foreground">
+        <div v-if="adminPreview" class="flex flex-wrap items-center justify-between gap-3 border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-950">
+            <p>
+                Admin preview of {{ adminPreview.userName }}'s {{ portfolio.status }} portfolio.
+            </p>
+            <Link :href="adminPreview.portfoliosUrl" class="font-semibold underline underline-offset-4">
+                Back to their portfolios
+            </Link>
+        </div>
 
         <!-- Dynamic Template Rendering Based on Template Slug -->
         <main class="flex-1">

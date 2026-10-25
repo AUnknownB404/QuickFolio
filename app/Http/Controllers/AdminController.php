@@ -57,6 +57,38 @@ class AdminController extends Controller
         ]);
     }
 
+    public function userPortfolios(User $user): Response
+    {
+        $portfolios = $user->portfolios()
+            ->with('template:id,name,slug')
+            ->latest()
+            ->paginate(10, ['id', 'user_id', 'template_id', 'title', 'slug', 'status', 'updated_at'])
+            ->withQueryString();
+
+        return Inertia::render('Admin/UserPortfolios', [
+            'user' => $user->only(['id', 'name', 'email']),
+            'portfolios' => $portfolios,
+        ]);
+    }
+
+    public function showPortfolio(Portfolio $portfolio): Response
+    {
+        $portfolio->load([
+            'template.category',
+            'template.sections.fields.fieldDefinition',
+            'sections.fieldValues.fieldDefinition',
+            'user:id,name,email',
+        ]);
+
+        return Inertia::render('Portfolios/PublicShow', [
+            'portfolio' => $portfolio,
+            'adminPreview' => [
+                'userName' => $portfolio->user->name,
+                'portfoliosUrl' => route('admin.users.portfolios', $portfolio->user_id),
+            ],
+        ]);
+    }
+
     public function updateUserRole(Request $request, User $user): RedirectResponse
     {
         $validated = $request->validate([
