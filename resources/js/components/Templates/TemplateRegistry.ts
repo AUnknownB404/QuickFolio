@@ -15,6 +15,7 @@ const templateRegistry: Record<string, Component> = {
     'swiss-grid': defineAsyncComponent(() => import('./SwissGrid.vue')),
     'swiss-signal': defineAsyncComponent(() => import('./SwissSignal.vue')),
     'tidepool': defineAsyncComponent(() => import('./Tidepool.vue')),
+    'widescreen-studio': defineAsyncComponent(() => import('./WidescreenStudio.vue')),
 };
 
 export function getTemplateComponent(slug: string): Component {
