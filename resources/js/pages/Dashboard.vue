@@ -156,6 +156,39 @@ const deletePortfolio = (portfolio: Portfolio) => {
                 </Link>
             </section>
 
+            <section class="mt-6 rounded-2xl border border-[#DCEBE6] bg-white p-5 shadow-[0_2px_8px_rgba(15,23,42,0.025)] sm:p-6">
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                        <p class="text-xs font-bold uppercase tracking-[0.16em] text-[#00695C]">How to get started</p>
+                        <h2 class="mt-1 text-lg font-bold text-[#0F172A]">From template to live portfolio</h2>
+                    </div>
+                    <p class="text-sm text-[#64748B]">You can save and preview your work before anyone else can see it.</p>
+                </div>
+                <ol class="mt-5 grid gap-4 sm:grid-cols-3">
+                    <li class="flex gap-3 rounded-xl bg-[#F8FBFA] p-4">
+                        <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#E8F4F1] text-sm font-bold text-[#00695C]">1</span>
+                        <div>
+                            <p class="text-sm font-semibold text-[#0F172A]">Choose a template</p>
+                            <p class="mt-1 text-xs leading-5 text-[#64748B]">Pick a design that suits your work to create a portfolio.</p>
+                        </div>
+                    </li>
+                    <li class="flex gap-3 rounded-xl bg-[#F8FBFA] p-4">
+                        <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#E8F4F1] text-sm font-bold text-[#00695C]">2</span>
+                        <div>
+                            <p class="text-sm font-semibold text-[#0F172A]">Add your content</p>
+                            <p class="mt-1 text-xs leading-5 text-[#64748B]">Fill in each section and save your changes as you go.</p>
+                        </div>
+                    </li>
+                    <li class="flex gap-3 rounded-xl bg-[#F8FBFA] p-4">
+                        <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#E8F4F1] text-sm font-bold text-[#00695C]">3</span>
+                        <div>
+                            <p class="text-sm font-semibold text-[#0F172A]">Preview, then publish</p>
+                            <p class="mt-1 text-xs leading-5 text-[#64748B]">Preview your work in the editor, then publish when it is ready.</p>
+                        </div>
+                    </li>
+                </ol>
+            </section>
+
             <!-- Summary cards -->
             <section class="mt-8 grid gap-4 sm:grid-cols-3">
                 <div class="rounded-2xl border border-[#E1E8E7] bg-white p-5 shadow-[0_2px_8px_rgba(15,23,42,0.025)]">

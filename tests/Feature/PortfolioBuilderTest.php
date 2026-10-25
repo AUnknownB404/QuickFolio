@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\FieldDefinition;
+use App\Models\Portfolio;
 use App\Models\PortfolioFieldValue;
 use App\Models\PortfolioSection;
 use App\Models\Template;
@@ -45,6 +46,41 @@ class PortfolioBuilderTest extends TestCase
             ->where('demoPortfolio.google_form_email_entry', '2068715591')
             ->where('demoPortfolio.google_form_message_entry', '1647174915')
         );
+    }
+
+    public function test_portfolio_owner_can_load_the_live_preview_but_other_users_cannot(): void
+    {
+        $owner = User::factory()->create();
+        $otherUser = User::factory()->create();
+        $template = Template::create([
+            'name' => 'Preview Template',
+            'slug' => 'preview-template',
+            'is_published' => true,
+        ]);
+        $portfolio = Portfolio::create([
+            'user_id' => $owner->id,
+            'template_id' => $template->id,
+            'title' => 'Private Draft',
+            'slug' => 'private-draft',
+            'status' => 'draft',
+        ]);
+
+        $livePreviewUrl = route('portfolios.edit', $portfolio).'?live_preview=1';
+
+        $this->actingAs($owner)
+            ->get($livePreviewUrl)
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Portfolios/PublicShow')
+                ->where('portfolio.status', 'draft')
+                ->where('livePreview', true));
+
+        $this->actingAs($otherUser)
+            ->get($livePreviewUrl)
+            ->assertForbidden();
+
+        $this->get(route('portfolios.published', $portfolio->slug))
+            ->assertNotFound();
     }
 
     public function test_ivory_editorial_template_is_seeded_and_previewable()

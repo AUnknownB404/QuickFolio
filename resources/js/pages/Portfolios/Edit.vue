@@ -9,6 +9,7 @@ import {
     ChevronDown,
     Download,
     Eye,
+    Expand,
     Globe2,
     Image as ImageIcon,
     LayoutTemplate,
@@ -16,7 +17,6 @@ import {
     Plus,
     Save,
     Settings2,
-    Sparkles,
     Trash2,
     Upload,
 } from 'lucide-vue-next';
@@ -32,6 +32,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import Button from '@/components/ui/button/Button.vue';
 
 interface FieldDefinition {
     id: number;
@@ -80,6 +81,7 @@ interface Portfolio {
     google_form_name_entry: string | null;
     google_form_email_entry: string | null;
     google_form_message_entry: string | null;
+    design_settings?: Record<string, any>;
     template: Template;
     sections: PortfolioSection[];
 }
@@ -110,6 +112,70 @@ const props = defineProps<{
 }>();
 
 const page = usePage();
+
+const fieldGuidance: Record<string, { description: string; example?: string }> = {
+    logo_text: { description: 'The short brand name shown in your navigation bar.', example: 'Alex Morgan' },
+    logo_image: { description: 'An optional logo image shown in place of text branding.' },
+    sticky_nav: { description: 'Keep the navigation visible at the top as visitors scroll.' },
+    show_logo: { description: 'Show or hide your logo in the navigation bar.' },
+    hero_greeting: { description: 'A short greeting displayed above your name.', example: 'Hello, I am' },
+    hero_name: { description: 'Your name, usually the largest text in the opening section.', example: 'Alex Morgan' },
+    hero_role: { description: 'Your profession or the kind of work you do.', example: 'Product designer' },
+    hero_description: { description: 'A brief introduction visitors see near your name and role.', example: 'I design simple, useful digital products.' },
+    hero_image: { description: 'Your portrait or profile image in the opening section.' },
+    hero_background_image: { description: 'A background image behind the opening section, if this template supports one.' },
+    hero_cta_primary_text: { description: 'The label on the main action button near your introduction.', example: 'View my work' },
+    hero_cta_primary_url: { description: 'Where the main action button takes visitors. Use a URL or section link.', example: '#projects' },
+    hero_cta_secondary_text: { description: 'An optional label for a second action button.', example: 'Contact me' },
+    hero_cta_secondary_url: { description: 'Where the second action button takes visitors.', example: '#contact' },
+    hero_social_links: { description: 'Add links to your social or professional profiles; each entry becomes a profile link.' },
+    about_title: { description: 'The heading for the section where you tell visitors about yourself.', example: 'A little about me' },
+    about_subtitle: { description: 'A short supporting line below your About heading.' },
+    about_description: { description: 'Your background, approach, or what you care about in your work.' },
+    about_image: { description: 'An optional image displayed alongside your About content.' },
+    about_highlights: { description: 'Short facts or achievements displayed as highlights.', example: '5+ years of experience' },
+    about_cv_file: { description: 'A downloadable CV or resume visitors can open from your portfolio.' },
+    about_cta_text: { description: 'The label on an optional action button in the About section.', example: 'Download my resume' },
+    about_cta_url: { description: 'The destination for the About section action button.' },
+    journey_title: { description: 'The heading above your work or education history.', example: 'My experience' },
+    journey_subtitle: { description: 'A short introduction to your professional journey.' },
+    journey_list: { description: 'Add one entry for each role, study period, or career milestone.' },
+    skills_title: { description: 'The heading above your skills list.', example: 'Skills & tools' },
+    skills_subtitle: { description: 'A short line under the skills heading.' },
+    skills_description: { description: 'A brief explanation of your strengths or how you use your skills.' },
+    skills_list: { description: 'Add one entry for each skill you want to feature.' },
+    skills_show_level: { description: 'Show proficiency indicators for skills that include a percentage.' },
+    skills_show_icon: { description: 'Show icons next to skills when the template supports them.' },
+    projects_title: { description: 'The heading above your selected work.', example: 'Featured projects' },
+    projects_subtitle: { description: 'A short introduction to the projects visitors will see.' },
+    projects_description: { description: 'Optional context shown before your project list.' },
+    projects_list: { description: 'Add one entry for each project card shown in your portfolio.' },
+    projects_show_featured: { description: 'Show a featured label on projects you mark as featured.' },
+    contact_title: { description: 'The heading inviting visitors to get in touch.', example: 'Let’s work together' },
+    contact_subtitle: { description: 'A short supporting line under the contact heading.' },
+    contact_description: { description: 'Tell visitors what they can contact you about.' },
+    contact_email: { description: 'The email address visitors can use to contact you.', example: 'hello@example.com' },
+    contact_phone: { description: 'An optional phone number you are comfortable sharing publicly.' },
+    contact_location: { description: 'Your city or region, if you want to share it.', example: 'Toronto, Canada' },
+    contact_form_enabled: { description: 'Show the contact form area when the template supports it.' },
+    contact_social_links: { description: 'Add links visitors can use to find you on other platforms.' },
+    services_title: { description: 'The heading above the services you offer.', example: 'How I can help' },
+    services_subtitle: { description: 'A short introduction to your services.' },
+    services_list: { description: 'Add one entry for each service you offer.' },
+};
+
+const guidanceForField = (field: FieldDefinition) =>
+    fieldGuidance[field.field_key] ?? {
+        description: field.data_type === 'image'
+            ? 'Upload an image that visitors will see in this part of your portfolio.'
+            : field.data_type === 'file'
+              ? 'Upload a file visitors can open or download from this part of your portfolio.'
+              : field.data_type === 'array'
+                ? 'Add one or more entries; each entry appears in this portfolio section.'
+                : field.data_type === 'boolean'
+                  ? 'Choose whether this option is shown on your portfolio.'
+                  : `This content appears in the ${humanize(field.field_key.split('_')[0]).toLowerCase()} section of your portfolio.`,
+    };
 
 const hiddenNavbarFieldKeys = new Set(['nav_links', 'cta_text', 'cta_url']);
 const temporarilyHiddenFieldKeys = new Set(['hero_background_image']);
@@ -305,6 +371,72 @@ const pendingUploadId = (value: unknown): string | null => {
     return /^[a-f0-9]{32}$/.test(id) ? id : null;
 };
 
+const previewFrame = ref<HTMLIFrameElement | null>(null);
+const isPreviewExpanded = ref(false);
+
+const resolvePreviewUploads = (value: any): any => {
+    if (Array.isArray(value)) return value.map(resolvePreviewUploads);
+    if (value && typeof value === 'object') {
+        return Object.fromEntries(
+            Object.entries(value).map(([key, nestedValue]) => [key, resolvePreviewUploads(nestedValue)]),
+        );
+    }
+
+    const uploadId = pendingUploadId(value);
+    return uploadId ? pendingUploads.value[uploadId]?.previewUrl || '' : value;
+};
+
+const livePreviewPayload = computed(() => {
+    const content: Record<string, Record<string, any>> = {};
+    const sections = form.sections.map((section: FormSection) => {
+        const fieldValues = section.field_values.map((fieldValue: FormFieldValue) => {
+            const fieldDefinition = fieldDefMap.value.get(fieldValue.field_definition_id);
+            const value = resolvePreviewUploads(fieldValue.value);
+
+            if (section.is_enabled && fieldDefinition) {
+                content[section.section_key] ??= {};
+                content[section.section_key][fieldDefinition.field_key] = value;
+            }
+
+            return {
+                ...fieldValue,
+                value,
+                ...(fieldDefinition ? { field_definition: fieldDefinition } : {}),
+            };
+        });
+
+        return {
+            ...section,
+            field_values: fieldValues,
+        };
+    });
+
+    return {
+        type: 'quickfolio:live-preview',
+        content,
+        portfolio: {
+            ...props.portfolio,
+            sections,
+            google_form_url: form.google_form_url || null,
+            google_form_name_entry: form.google_form_name_entry || null,
+            google_form_email_entry: form.google_form_email_entry || null,
+            google_form_message_entry: form.google_form_message_entry || null,
+        },
+    };
+});
+
+const sendLivePreview = () => {
+    const target = previewFrame.value?.contentWindow;
+    if (!target) return;
+
+    target.postMessage(
+        JSON.parse(JSON.stringify(livePreviewPayload.value)),
+        window.location.origin,
+    );
+};
+
+watch(livePreviewPayload, sendLivePreview, { deep: true });
+
 const discardPendingUpload = (uploadId: string) => {
     const upload = pendingUploads.value[uploadId];
     if (upload?.previewUrl) URL.revokeObjectURL(upload.previewUrl);
@@ -498,7 +630,10 @@ const savePortfolio = () => {
             : {}),
     })).post(route('portfolios.update', props.portfolio.id as any), {
         preserveScroll: true,
-        onSuccess: clearPendingUploads,
+        onSuccess: () => {
+            clearPendingUploads();
+            form.defaults();
+        },
         onError: (errors) => {
             uploadIds.forEach((id) => {
                 const upload = uploads[id];
@@ -512,7 +647,46 @@ const savePortfolio = () => {
 };
 
 const publishForm = useForm({});
+const requiredFieldsMissing = computed(() => {
+    const missing: string[] = [];
+
+    props.portfolio.template.sections.forEach((templateSection) => {
+        const portfolioSection = form.sections.find((section: FormSection) => section.section_key === templateSection.section_key);
+        if (!portfolioSection?.is_enabled) return;
+
+        templateSection.fields
+            .filter((field) => field.is_required)
+            .forEach((field) => {
+                const value = portfolioSection.field_values.find((fieldValue) =>
+                    fieldValue.field_definition_id === field.field_definition.id,
+                )?.value;
+
+                if (
+                    value === null ||
+                    value === undefined ||
+                    value === '' ||
+                    value === false ||
+                    value === 0 ||
+                    value === '0' ||
+                    (Array.isArray(value) && value.length === 0)
+                ) {
+                    missing.push(field.field_definition.label);
+                }
+            });
+    });
+
+    return missing;
+});
+
+watch(
+    () => form.sections,
+    () => publishForm.clearErrors('publish'),
+    { deep: true },
+);
+
 const publishPortfolio = () => {
+    if (form.isDirty || hasPendingUploads.value) return;
+
     publishForm.post(route('portfolios.publish', props.portfolio.id as any), {
         preserveScroll: true,
     });
@@ -532,6 +706,16 @@ const humanize = (value: string) =>
     value.replace(/[-_]/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 
 const sidebarSectionLabel = (sectionKey: string) => humanize(sectionKey);
+const sectionGuidance: Record<string, string> = {
+    navbar: 'This controls the branding visitors see in the navigation at the top of your site.',
+    header: 'This is the opening area visitors see first, including your name, role, introduction, and main links.',
+    about: 'Use this section to introduce yourself and share helpful background, highlights, or a resume.',
+    journey: 'Show your work history, education, or other milestones in this timeline.',
+    skills: 'Choose the skills and tools you want visitors to notice.',
+    projects: 'Add examples of your work. Each item can appear as a project card in this section.',
+    services: 'Describe the services you offer so visitors can understand how you can help.',
+    contact: 'Give visitors a clear way to contact or follow you.',
+};
 
 const sectionFieldCount = (sectionKey: string) => {
     return fieldsForSection(sectionKey).filter((field) =>
@@ -552,7 +736,7 @@ const currentSectionLabel = computed(() =>
     <div class="min-h-screen overflow-x-clip bg-[#F4F7F7] dark:bg-slate-950 text-[#0F172A] dark:text-slate-100 transition-colors duration-200">
         <!-- Custom quickFolio editor navigation; no Laravel default layout -->
         <header class="sticky top-0 z-40 border-b border-[#E1E8E7] dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur">
-            <div class="mx-auto flex min-h-[68px] max-w-[1800px] flex-wrap items-center justify-between gap-2 px-3 py-2 sm:flex-nowrap sm:gap-3 sm:px-5 xl:px-6">
+            <div class="mx-auto flex min-h-[60px] max-w-[1600px] flex-wrap items-center justify-between gap-2 px-3 py-2 sm:flex-nowrap sm:gap-3 sm:px-5 xl:px-6">
                 <div class="flex min-w-0 items-center gap-3">
                     <Link
                         :href="route('dashboard')"
@@ -626,52 +810,41 @@ const currentSectionLabel = computed(() =>
 
                     <button
                         type="button"
-                        :disabled="publishForm.processing"
-                        class="hidden h-10 items-center gap-2 rounded-xl border border-[#DCE6E4] dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-sm font-semibold text-[#475569] dark:text-slate-300 transition hover:bg-[#F8FBFA] dark:bg-slate-800/70 sm:inline-flex disabled:cursor-not-allowed disabled:opacity-50"
+                        :disabled="publishForm.processing || form.isDirty || hasPendingUploads"
+                        :title="form.isDirty || hasPendingUploads ? 'Save your changes before publishing' : undefined"
+                        class="inline-flex h-10 items-center gap-2 rounded-xl border border-[#DCE6E4] dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-sm font-semibold text-[#475569] dark:text-slate-300 transition hover:bg-[#F8FBFA] dark:bg-slate-800/70 disabled:cursor-not-allowed disabled:opacity-50"
                         @click="publishPortfolio"
                     >
                         <Globe2 class="h-4 w-4 text-[#00695C]" />
-                        {{ portfolio.status === 'published' ? 'Unpublish' : 'Publish' }}
-                    </button>
-
-                    <button
-                        type="button"
-                        :disabled="form.processing || hasPendingUploads"
-                        class="inline-flex h-10 items-center gap-2 rounded-xl bg-[#00695C] px-3.5 text-sm font-semibold text-white transition hover:bg-[#00574C] disabled:cursor-not-allowed disabled:opacity-50 sm:px-4"
-                        @click="savePortfolio"
-                    >
-                        <LoaderCircle v-if="form.processing" class="h-4 w-4 animate-spin" />
-                        <Save v-else class="h-4 w-4" />
-                        <span class="hidden sm:inline">{{ form.processing ? 'Saving…' : 'Save changes' }}</span>
-                        <span class="sm:hidden">{{ form.processing ? 'Saving' : 'Save' }}</span>
+                        <span class="hidden sm:inline">{{ portfolio.status === 'published' ? 'Unpublish' : 'Publish' }}</span>
                     </button>
                 </div>
             </div>
         </header>
 
         <!-- Editor workspace -->
-        <main class="mx-auto grid w-full max-w-[1800px] min-w-0 grid-cols-1 gap-4 px-3 py-4 sm:gap-5 sm:px-5 sm:py-5 lg:grid-cols-[210px_minmax(0,1fr)] lg:gap-5 xl:grid-cols-[220px_minmax(0,1fr)_280px] xl:px-6 xl:py-6">
+        <main class="mx-auto grid w-full max-w-[1600px] min-w-0 grid-cols-1 gap-4 px-3 py-4 sm:gap-5 sm:px-5 sm:py-5 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start xl:gap-6 xl:px-6 xl:py-6">
             <!-- Section navigation -->
-            <aside class="min-w-0">
-                <div class="rounded-2xl border border-[#E1E8E7] dark:border-slate-800 bg-white dark:bg-slate-900 p-3 shadow-[0_2px_8px_rgba(15,23,42,0.025)] lg:sticky lg:top-[92px]">
-                    <div class="px-3 pb-3 pt-2">
-                        <p class="text-[11px] font-bold uppercase tracking-[0.16em] text-[#94A3B8] dark:text-slate-500">Workspace</p>
-                        <h2 class="mt-1 text-sm font-bold text-[#0F172A] dark:text-slate-100">Portfolio sections</h2>
+            <aside class="min-w-0 xl:col-span-2">
+                <div class="rounded-xl border border-[#E1E8E7] bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+                    <div class="flex items-center justify-between gap-3 px-2 pb-3 pt-1">
+                        <h2 class="text-sm font-semibold text-[#0F172A] dark:text-slate-100">Portfolio sections</h2>
+                        <span class="text-xs text-slate-500 dark:text-slate-400">{{ portfolio.template.name }}</span>
                     </div>
 
-                    <nav class="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible" aria-label="Portfolio sections">
+                    <nav class="flex flex-wrap gap-2" aria-label="Portfolio sections">
                         <button
                             v-for="sec in form.sections"
                             :key="sec.id"
                             type="button"
-                            class="flex min-w-max items-center gap-3 rounded-xl px-3 py-3 text-left transition lg:w-full"
+                            class="flex min-w-0 items-center gap-2 rounded-lg px-3 py-2.5 text-left transition"
                             :class="activeSectionKey === sec.section_key
                                 ? 'bg-[#E8F4F1] dark:bg-teal-900/50 text-[#00695C]'
                                 : 'text-[#64748B] dark:text-slate-400 hover:bg-[#F4F7F7] dark:bg-slate-950 hover:text-[#0F172A] dark:text-slate-100'"
                             @click="activeSectionKey = sec.section_key"
                         >
                             <span
-                                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                                class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md"
                                 :class="activeSectionKey === sec.section_key ? 'bg-white dark:bg-slate-900 text-[#00695C]' : 'bg-[#F4F7F7] dark:bg-slate-950 text-[#94A3B8] dark:text-slate-500'"
                             >
                                 <LayoutTemplate class="h-4 w-4" />
@@ -691,14 +864,14 @@ const currentSectionLabel = computed(() =>
 
                         <button
                             type="button"
-                            class="flex min-w-max items-center gap-3 rounded-xl px-3 py-3 text-left transition lg:w-full"
+                            class="flex min-w-0 items-center gap-2 rounded-lg px-3 py-2.5 text-left transition"
                             :class="activeSectionKey === 'contact-integration'
                                 ? 'bg-[#E8F4F1] dark:bg-teal-900/50 text-[#00695C]'
                                 : 'text-[#64748B] dark:text-slate-400 hover:bg-[#F4F7F7] dark:bg-slate-950 hover:text-[#0F172A] dark:text-slate-100'"
                             @click="activeSectionKey = 'contact-integration'"
                         >
                             <span
-                                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                                class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md"
                                 :class="activeSectionKey === 'contact-integration' ? 'bg-white dark:bg-slate-900 text-[#00695C]' : 'bg-[#F4F7F7] dark:bg-slate-950 text-[#94A3B8] dark:text-slate-500'"
                             >
                                 <Settings2 class="h-4 w-4" />
@@ -707,30 +880,22 @@ const currentSectionLabel = computed(() =>
                         </button>
                     </nav>
 
-                    <div class="mt-4 hidden rounded-xl bg-[#F4F7F7] dark:bg-slate-950 p-3 lg:block">
-                        <div class="flex items-center gap-2 text-xs font-semibold text-[#475569] dark:text-slate-300">
-                            <Sparkles class="h-4 w-4 text-[#00695C]" />
-                            Quick tip
-                        </div>
-                        <p class="mt-1.5 text-xs leading-5 text-[#64748B] dark:text-slate-400">
-                            Keep your content concise. You can save changes as you work.
-                        </p>
-                    </div>
+
                 </div>
             </aside>
 
             <!-- Main editor panel -->
-            <section class="min-w-0 space-y-5">
+            <section class="min-w-0 space-y-4">
                 <div class="flex flex-wrap items-end justify-between gap-3">
                     <div>
-                        <p class="text-xs font-semibold text-[#00695C]">EDITOR / CONTENT</p>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-[#00695C]">Portfolio editor</p>
                         <h2 class="mt-1 text-xl font-bold tracking-tight sm:text-2xl text-[#0F172A] dark:text-slate-100">
                             {{ currentSectionLabel }}
                         </h2>
                         <p class="mt-1.5 text-sm leading-6 text-[#64748B] dark:text-slate-400">
                             {{ activeSectionKey === 'contact-integration'
                                 ? 'Connect a Google Form to receive messages from your portfolio.'
-                                : `Customize the content displayed in your ${humanize(activeSectionKey).toLowerCase()} section.` }}
+                                : sectionGuidance[activeSectionKey] ?? `Customize the content displayed in your ${humanize(activeSectionKey).toLowerCase()} section.` }}
                         </p>
                     </div>
                     <span class="inline-flex items-center gap-1.5 rounded-full border border-[#E1E8E7] dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-medium text-[#64748B] dark:text-slate-400">
@@ -740,7 +905,7 @@ const currentSectionLabel = computed(() =>
                 </div>
 
                 <!-- Google Forms integration -->
-                <div v-if="activeSectionKey === 'contact-integration'" class="overflow-hidden rounded-2xl border border-[#E1E8E7] dark:border-slate-800 bg-white dark:bg-slate-900 shadow-[0_2px_8px_rgba(15,23,42,0.025)]">
+                <div v-if="activeSectionKey === 'contact-integration'" class="overflow-hidden rounded-xl border border-[#E1E8E7] bg-white dark:border-slate-800 dark:bg-slate-900">
                     <div class="border-b border-[#EDF1F0] dark:border-slate-800 px-5 py-5 sm:px-6">
                         <div class="flex items-start gap-3">
                             <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#E8F4F1] dark:bg-teal-900/50 text-[#00695C]">
@@ -793,22 +958,29 @@ const currentSectionLabel = computed(() =>
                             </div>
                         </div>
 
-                        <div class="flex items-start gap-3 border-t border-[#EDF1F0] dark:border-slate-800 pt-5">
-                            <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#E8F4F1] dark:bg-teal-900/50 text-[#00695C]">
-                                <Check class="h-3 w-3" />
-                            </span>
-                            <p class="text-xs leading-5 text-[#64748B] dark:text-slate-400">
-                                Leave all four fields empty to disable Google Forms. Save changes to apply the connection.
-                                This setup is included in the downloaded portfolio.
-                            </p>
-                        </div>
+                        <div class="flex flex-col gap-3 border-t border-[#EDF1F0] dark:border-slate-800 bg-[#FBFCFC] dark:bg-slate-900 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                        <p class="text-xs leading-5 text-[#94A3B8] dark:text-slate-500">
+                            Required fields are marked with <span class="font-semibold text-[#00695C]">*</span>.
+                            Remember to save your changes.
+                        </p>
+                        <button
+                            type="button"
+                            :disabled="form.processing || hasPendingUploads"
+                            class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#00695C] px-4 text-sm font-semibold text-white transition hover:bg-[#00574C] disabled:cursor-not-allowed disabled:opacity-50"
+                            @click="savePortfolio"
+                        >
+                            <LoaderCircle v-if="form.processing" class="h-4 w-4 animate-spin" />
+                            <Save v-else class="h-4 w-4" />
+                            {{ form.processing ? 'Saving changes…' : hasPendingUploads ? 'Preparing upload…' : 'Save changes' }}
+                        </button>
+                    </div>
                     </div>
                 </div>
 
                 <!-- Dynamic template section fields -->
                 <div
                     v-if="activePortfolioSection"
-                    class="overflow-hidden rounded-2xl border border-[#E1E8E7] dark:border-slate-800 bg-white dark:bg-slate-900 shadow-[0_2px_8px_rgba(15,23,42,0.025)]"
+                    class="overflow-hidden rounded-xl border border-[#E1E8E7] bg-white dark:border-slate-800 dark:bg-slate-900"
                 >
                     <div class="flex flex-col gap-4 border-b border-[#EDF1F0] dark:border-slate-800 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
                         <div class="flex items-center gap-3">
@@ -818,6 +990,9 @@ const currentSectionLabel = computed(() =>
                             <div>
                                 <h3 class="font-bold text-[#0F172A] dark:text-slate-100">{{ currentSectionLabel }} content</h3>
                                 <p class="mt-1 text-sm text-[#64748B] dark:text-slate-400">Using the {{ portfolio.template.name }} template</p>
+                                <p v-if="sectionGuidance[activeSectionKey]" class="mt-2 max-w-2xl text-xs leading-5 text-[#64748B] dark:text-slate-400">
+                                    {{ sectionGuidance[activeSectionKey] }} The template determines the exact layout and placement.
+                                </p>
                             </div>
                         </div>
 
@@ -860,10 +1035,24 @@ const currentSectionLabel = computed(() =>
                                             {{ fieldConfig.field_definition.label }}
                                             <span v-if="fieldConfig.is_required" class="ml-0.5 text-[#00695C]">*</span>
                                         </Label>
-                                        <span class="rounded-md bg-[#F4F7F7] dark:bg-slate-950 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#94A3B8] dark:text-slate-500">
-                                            {{ fieldConfig.field_definition.data_type.replace('_', ' ') }}
+                                        <span class="flex items-center gap-2">
+                                            <span
+                                                v-if="fieldConfig.is_required"
+                                                class="rounded-md bg-[#E8F4F1] dark:bg-teal-950/50 px-2 py-1 text-[10px] font-semibold text-[#00695C] dark:text-teal-300"
+                                            >
+                                                Required to publish
+                                            </span>
+                                            <span class="rounded-md bg-[#F4F7F7] dark:bg-slate-950 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#94A3B8] dark:text-slate-500">
+                                                {{ fieldConfig.field_definition.data_type.replace('_', ' ') }}
+                                            </span>
                                         </span>
                                     </div>
+                                    <p class="text-xs leading-5 text-[#64748B] dark:text-slate-400">
+                                        {{ guidanceForField(fieldConfig.field_definition).description }}
+                                        <span v-if="guidanceForField(fieldConfig.field_definition).example">
+                                            Example: <span class="font-medium">{{ guidanceForField(fieldConfig.field_definition).example }}</span>
+                                        </span>
+                                    </p>
 
                                     <Input
                                         v-if="['string', 'url', 'email'].includes(fieldConfig.field_definition.data_type)"
@@ -874,7 +1063,7 @@ const currentSectionLabel = computed(() =>
                                             fieldConfig.field_definition.field_key.includes('cta') &&
                                             fieldConfig.field_definition.field_key.endsWith('_url')
                                                 ? 'Enter a URL, #section, mailto:, or tel: link'
-                                                : `Enter ${fieldConfig.field_definition.label.toLowerCase()}`
+                                                : guidanceForField(fieldConfig.field_definition).example || `Enter ${fieldConfig.field_definition.label.toLowerCase()}`
                                         "
                                         class="h-11 rounded-xl border-[#DCE6E4] dark:border-slate-700 bg-white focus-visible:ring-[#00695C]/30 dark:focus-visible:ring-teal-400/30 text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
                                     />
@@ -953,7 +1142,7 @@ const currentSectionLabel = computed(() =>
                                         :id="fieldConfig.field_definition.field_key"
                                         v-model="activeValues[fieldConfig.field_definition.id].value"
                                         :rows="4"
-                                        :placeholder="`Enter ${fieldConfig.field_definition.label.toLowerCase()}`"
+                                        :placeholder="guidanceForField(fieldConfig.field_definition).example || `Enter ${fieldConfig.field_definition.label.toLowerCase()}`"
                                         class="min-h-[110px] resize-y rounded-xl border-[#DCE6E4] dark:border-slate-700 bg-white focus-visible:ring-[#00695C]/30 dark:focus-visible:ring-teal-400/30 text-slate-900 placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
                                     />
 
@@ -1182,79 +1371,44 @@ const currentSectionLabel = computed(() =>
                 </div>
             </section>
 
-            <!-- Live summary preview -->
-            <aside class="min-w-0">
-                <div class="rounded-2xl border border-[#E1E8E7] dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-[0_2px_8px_rgba(15,23,42,0.025)] lg:sticky lg:top-[92px]">
-                    <div class="flex items-center justify-between gap-2 px-1 pb-4">
-                        <div>
-                            <h2 class="text-sm font-bold text-[#0F172A] dark:text-slate-100">Content overview</h2>
-                            <p class="mt-1 text-xs text-[#94A3B8] dark:text-slate-500">A quick look at your sections</p>
+            <!-- Live template preview -->
+            <aside
+                class="min-w-0"
+                :class="isPreviewExpanded ? 'fixed inset-0 z-50 overflow-y-auto bg-[#F4F7F7] p-3 dark:bg-slate-950 sm:p-5' : ''"
+            >
+                <div
+                    class="overflow-hidden rounded-xl border border-[#E1E8E7] bg-white dark:border-slate-800 dark:bg-slate-900 xl:sticky xl:top-[88px]"
+                    :class="isPreviewExpanded ? 'mx-auto max-w-6xl' : ''"
+                >
+                    <div class="flex items-center justify-between gap-2 border-b border-[#EDF1F0] px-4 py-3 dark:border-slate-800">
+                        <div class="min-w-0">
+                            <h2 class="text-sm font-bold text-[#0F172A] dark:text-slate-100">Live preview</h2>
+                            <p class="mt-1 truncate text-xs text-[#64748B] dark:text-slate-400">
+                                {{ portfolio.template.name }} · Updates as you type
+                            </p>
                         </div>
-                        <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-[#E8F4F1] dark:bg-teal-900/50 text-[#00695C]">
-                            <Eye class="h-4 w-4" />
-                        </span>
-                    </div>
-
-                    <div class="rounded-xl border border-[#E1E8E7] dark:border-slate-800 bg-[#F8FAFA] dark:bg-slate-800/70 p-4">
-                        <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-[#E8F4F1] dark:bg-teal-900/50 text-lg font-bold text-[#00695C]">
-                            {{ portfolio.title?.charAt(0)?.toUpperCase() || 'Q' }}
-                        </div>
-                        <h3 class="mt-3 break-words text-base font-bold text-[#0F172A] dark:text-slate-100">{{ portfolio.title }}</h3>
-                        <p class="mt-1 text-xs text-[#64748B] dark:text-slate-400">{{ portfolio.template.name }}</p>
-                        <div class="mt-3 flex items-center gap-2">
-                            <span class="h-1.5 w-1.5 rounded-full" :class="portfolio.status === 'published' ? 'bg-[#16A34A]' : 'bg-[#D99A18]'" />
-                            <span class="text-xs font-medium capitalize text-[#64748B] dark:text-slate-400">{{ portfolio.status }}</span>
-                        </div>
-                    </div>
-
-                    <div class="mt-4 space-y-2">
-                        <div
-                            v-for="sec in form.sections"
-                            :key="sec.id"
-                            class="rounded-xl border p-3 transition"
-                            :class="activeSectionKey === sec.section_key ? 'border-[#BFD9D2] dark:border-teal-800 bg-[#F4FAF8] dark:bg-teal-950/40' : 'border-[#EDF1F0] dark:border-slate-800 bg-white dark:bg-slate-900'"
+                        <button
+                            type="button"
+                            class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-[#DCE6E4] px-2.5 text-xs font-semibold text-[#475569] transition hover:bg-[#F4F7F7] dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                            :aria-label="isPreviewExpanded ? 'Exit expanded preview' : 'Expand live preview'"
+                            @click="isPreviewExpanded = !isPreviewExpanded"
                         >
-                            <button
-                                type="button"
-                                class="flex w-full items-center gap-2 text-left"
-                                @click="activeSectionKey = sec.section_key"
-                            >
-                                <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#F4F7F7] dark:bg-slate-950 text-[#64748B] dark:text-slate-400">
-                                    <LayoutTemplate class="h-3.5 w-3.5" />
-                                </span>
-                                <span class="min-w-0 flex-1 truncate text-xs font-semibold text-[#334155] dark:text-slate-200">{{ sidebarSectionLabel(sec.section_key) }}</span>
-                                <span class="h-2 w-2 shrink-0 rounded-full" :class="sec.is_enabled ? 'bg-[#22A06B]' : 'bg-[#CBD5E1]'" />
-                            </button>
-
-                            <div v-if="sec.is_enabled" class="mt-3 space-y-2 border-t border-[#EDF1F0] dark:border-slate-800 pt-3">
-                                <div v-for="fv in sec.field_values" :key="fv.field_definition_id" class="min-w-0">
-                                    <p class="text-[10px] font-semibold uppercase tracking-wide text-[#94A3B8] dark:text-slate-500">
-                                        {{ fieldDefMap.get(fv.field_definition_id)?.label || 'Field' }}
-                                    </p>
-                                    <p class="mt-0.5 break-words text-xs leading-5 text-[#64748B] dark:text-slate-400">
-                                        {{
-                                            Array.isArray(fv.value)
-                                                ? `${fv.value.length} item${fv.value.length === 1 ? '' : 's'}`
-                                                : typeof fv.value === 'boolean'
-                                                    ? (fv.value ? 'Enabled' : 'Disabled')
-                                                    : (fv.value || 'Not set')
-                                        }}
-                                    </p>
-                                </div>
-                            </div>
-                            <p v-else class="mt-2 text-[11px] text-[#94A3B8] dark:text-slate-500">Hidden from portfolio</p>
-                        </div>
+                            <Expand class="h-3.5 w-3.5" />
+                            {{ isPreviewExpanded ? 'Exit' : 'Expand' }}
+                        </button>
                     </div>
-
-                    <div class="mt-4 rounded-xl border border-[#DCEBE6] dark:border-teal-900 bg-[#F5FAF8] dark:bg-teal-950/30 p-3">
-                        <div class="flex items-center gap-2 text-xs font-bold text-[#00695C]">
-                            <Sparkles class="h-4 w-4" />
-                            Keep it fresh
-                        </div>
-                        <p class="mt-1.5 text-xs leading-5 text-[#64748B] dark:text-slate-400">
-                            Add meaningful details and use clear project images to make your portfolio stand out.
-                        </p>
-                    </div>
+                    <iframe
+                        :key="`${portfolio.id}:${portfolio.template.slug}`"
+                        ref="previewFrame"
+                        :src="`${route('portfolios.edit', portfolio.id as any)}?live_preview=1`"
+                        :title="`Live preview of ${portfolio.title}`"
+                        sandbox="allow-scripts allow-same-origin"
+                        class="block h-[calc(100dvh-185px)] min-h-[520px] w-full border-0 bg-white"
+                        @load="sendLivePreview"
+                    />
+                    <p class="border-t border-[#EDF1F0] px-4 py-2 text-[11px] leading-4 text-[#64748B] dark:border-slate-800 dark:text-slate-400">
+                        Previewing your current edits. Save your work before leaving the editor.
+                    </p>
                 </div>
             </aside>
         </main>

@@ -55,8 +55,24 @@ class PortfolioController extends Controller
         return redirect()->route('portfolios.edit', $portfolio);
     }
 
-    public function edit(Portfolio $portfolio)
+    public function edit(Request $request, Portfolio $portfolio)
     {
+        if ($request->boolean('live_preview')) {
+            $this->authorize('view', $portfolio);
+
+            $portfolio->load([
+                'template.category',
+                'template.sections.fields.fieldDefinition',
+                'sections.fieldValues.fieldDefinition',
+                'user:id,name,email',
+            ]);
+
+            return Inertia::render('Portfolios/PublicShow', [
+                'portfolio' => $portfolio,
+                'livePreview' => true,
+            ]);
+        }
+
         $this->authorize('update', $portfolio);
 
         $portfolio->load([

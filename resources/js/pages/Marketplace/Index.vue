@@ -114,10 +114,10 @@ const createPortfolio = () => {
 <template>
     <Head title="Explore Templates — quickFolio" />
 
-    <div class="min-h-screen bg-[#F4F7F7] text-[#0F172A]">
+    <div class="min-h-screen bg-[#F4F7F7] dark:bg-slate-950 text-[#0F172A] dark:text-slate-100">
         <!-- Navigation -->
         <header
-            class="sticky top-0 z-40 border-b border-[#E2E8E8] bg-white/95 backdrop-blur"
+            class="sticky top-0 z-40 border-b border-[#E2E8E8] dark:border-slate-700 bg-white dark:bg-slate-900 backdrop-blur"
         >
             <div
                 class="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-5 sm:px-8 lg:px-10"
@@ -137,27 +137,27 @@ const createPortfolio = () => {
         </header>
 
         <!-- Hero -->
-        <section class="border-b border-[#E2E8E8] bg-white">
+        <section class="border-b border-[#E2E8E8] dark:border-slate-700 bg-white dark:bg-slate-900">
             <div
                 class="mx-auto max-w-7xl px-5 py-14 sm:px-8 sm:py-20 lg:px-10 lg:py-24"
             >
                 <div class="max-w-3xl">
                     <div
-                        class="mb-6 inline-flex items-center gap-2 rounded-full border border-[#C8E3DD] bg-[#EFF8F5] px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-[#00695C]"
+                        class="mb-6 inline-flex items-center gap-2 rounded-full border border-[#C8E3DD] dark:border-teal-900 bg-[#EFF8F5] dark:bg-teal-950/50 dark:bg-teal-950/50 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-[#00695C]"
                     >
                         <span class="h-1.5 w-1.5 rounded-full bg-[#00695C]"></span>
                         The template collection
                     </div>
 
                     <h1
-                        class="max-w-3xl text-4xl font-bold leading-[1.12] tracking-tight text-[#0F172A] sm:text-5xl lg:text-6xl"
+                        class="max-w-3xl text-4xl font-bold leading-[1.12] tracking-tight text-[#0F172A] dark:text-slate-100 sm:text-5xl lg:text-6xl"
                     >
                         Your next chapter
                         <span class="text-[#00695C]">starts here.</span>
                     </h1>
 
                     <p
-                        class="mt-6 max-w-2xl text-base leading-7 text-[#64748B] sm:text-lg sm:leading-8"
+                        class="mt-6 max-w-2xl text-base leading-7 text-[#64748B] dark:text-slate-300 sm:text-lg sm:leading-8"
                     >
                         Find a design that feels like you. Choose a template,
                         make it yours, and publish a portfolio you’re proud to
@@ -171,7 +171,7 @@ const createPortfolio = () => {
                     >
                         <div class="relative flex-1">
                             <span
-                                class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#94A3B8]"
+                                class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#94A3B8] dark:text-slate-400"
                                 aria-hidden="true"
                             >
                                 <svg
@@ -193,7 +193,7 @@ const createPortfolio = () => {
                             <Input
                                 v-model="search"
                                 placeholder="Search by name, style, or profession..."
-                                class="h-12 rounded-xl border-[#DCE5E5] bg-white pl-11 text-sm shadow-none placeholder:text-[#94A3B8] focus-visible:ring-[#00695C]"
+                                class="h-12 rounded-xl border-[#DCE5E5] dark:border-slate-600 bg-white text-slate-900 dark:bg-slate-800 dark:text-slate-100 pl-11 text-sm shadow-none placeholder:text-[#94A3B8] dark:placeholder:text-slate-400 caret-[#00695C] focus-visible:ring-[#00695C] focus-visible:ring-offset-0"
                             />
                         </div>
 
@@ -205,7 +205,7 @@ const createPortfolio = () => {
                         </Button>
                     </form>
 
-                    <p class="mt-4 text-sm text-[#94A3B8]">
+                    <p class="mt-4 text-sm text-[#94A3B8] dark:text-slate-400">
                         Designed for developers, designers, creatives, and
                         professionals.
                     </p>
@@ -230,12 +230,12 @@ const createPortfolio = () => {
                     </p>
 
                     <h2
-                        class="mt-2 text-2xl font-bold tracking-tight text-[#0F172A] sm:text-3xl"
+                        class="mt-2 text-2xl font-bold tracking-tight text-[#0F172A] dark:text-slate-100 sm:text-3xl"
                     >
                         Explore templates
                     </h2>
 
-                    <p class="mt-2 text-sm leading-6 text-[#64748B]">
+                    <p class="mt-2 text-sm leading-6 text-[#64748B] dark:text-slate-300">
                         A thoughtful starting point for your personal brand.
                     </p>
                 </div>
@@ -263,7 +263,7 @@ const createPortfolio = () => {
                     :class="
                         selectedCategory === ''
                             ? 'border-[#00695C] bg-[#00695C] text-white'
-                            : 'border-[#DCE5E5] bg-white text-[#475569] hover:border-[#00695C] hover:text-[#00695C]'
+                            : 'border-[#DCE5E5] dark:border-slate-600 bg-white dark:bg-slate-900 text-[#475569] dark:text-slate-300 hover:border-[#00695C] hover:text-[#00695C]'
                     "
                     @click="filterByCategory('')"
                 >
@@ -278,7 +278,7 @@ const createPortfolio = () => {
                     :class="
                         selectedCategory === cat.slug
                             ? 'border-[#00695C] bg-[#00695C] text-white'
-                            : 'border-[#DCE5E5] bg-white text-[#475569] hover:border-[#00695C] hover:text-[#00695C]'
+                            : 'border-[#DCE5E5] dark:border-slate-600 bg-white dark:bg-slate-900 text-[#475569] dark:text-slate-300 hover:border-[#00695C] hover:text-[#00695C]'
                     "
                     @click="filterByCategory(cat.slug)"
                 >
@@ -288,10 +288,10 @@ const createPortfolio = () => {
 
             <!-- Results count -->
             <div
-                class="mt-9 flex items-center justify-between border-b border-[#E2E8E8] pb-4"
+                class="mt-9 flex items-center justify-between border-b border-[#E2E8E8] dark:border-slate-700 pb-4"
             >
-                <p class="text-sm text-[#64748B]">
-                    <span class="font-semibold text-[#0F172A]">
+                <p class="text-sm text-[#64748B] dark:text-slate-300">
+                    <span class="font-semibold text-[#0F172A] dark:text-slate-100">
                         {{ templates.data.length }}
                     </span>
                     {{ templates.data.length === 1 ? 'template' : 'templates' }}
@@ -299,7 +299,7 @@ const createPortfolio = () => {
                 </p>
 
                 <span
-                    class="hidden text-xs font-medium text-[#94A3B8] sm:inline"
+                    class="hidden text-xs font-medium text-[#94A3B8] dark:text-slate-400 sm:inline"
                 >
                     Made for your next big thing
                 </span>
@@ -311,7 +311,7 @@ const createPortfolio = () => {
                 class="flex flex-col items-center py-20 text-center"
             >
                 <div
-                    class="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#E4F2EE] text-[#00695C]"
+                    class="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#E4F2EE] dark:bg-teal-950/60 dark:bg-teal-950/60 text-[#00695C]"
                 >
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -329,18 +329,18 @@ const createPortfolio = () => {
                     </svg>
                 </div>
 
-                <h3 class="mt-5 text-lg font-bold text-[#0F172A]">
+                <h3 class="mt-5 text-lg font-bold text-[#0F172A] dark:text-slate-100">
                     No templates found
                 </h3>
 
-                <p class="mt-2 max-w-sm text-sm leading-6 text-[#64748B]">
+                <p class="mt-2 max-w-sm text-sm leading-6 text-[#64748B] dark:text-slate-300">
                     Try a different search or category to find the right design
                     for your portfolio.
                 </p>
 
                 <Button
                     variant="outline"
-                    class="mt-5 rounded-xl border-[#C8D8D5] bg-white text-[#00695C] hover:bg-[#EFF8F5]"
+                    class="mt-5 rounded-xl border-[#C8D8D5] dark:border-slate-600 bg-white dark:bg-slate-900 text-[#00695C] hover:bg-[#EFF8F5] dark:bg-teal-950/50 dark:bg-teal-950/50"
                     @click="
                         search = '';
                         selectedCategory = '';
@@ -359,11 +359,11 @@ const createPortfolio = () => {
                 <Card
                     v-for="template in templates.data"
                     :key="template.id"
-                    class="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-[#E2E8E8] bg-white shadow-none transition duration-300 hover:-translate-y-1 hover:border-[#C8D8D5] hover:shadow-[0_12px_32px_rgba(15,23,42,0.06)]"
+                    class="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-[#E2E8E8] dark:border-slate-700 bg-white dark:bg-slate-900 shadow-none transition duration-300 hover:-translate-y-1 hover:border-[#C8D8D5] dark:border-slate-600 hover:shadow-[0_12px_32px_rgba(15,23,42,0.06)]"
                 >
                     <!-- Preview image -->
                     <div
-                        class="relative aspect-[4/3] overflow-hidden bg-[#E8EEEE]"
+                        class="relative aspect-[4/3] overflow-hidden bg-[#E8EEEE] dark:bg-slate-800 dark:bg-slate-800"
                     >
                         <img
                             :src="
@@ -376,7 +376,7 @@ const createPortfolio = () => {
                         />
 
                         <div
-                            class="absolute left-3 top-3 rounded-lg border border-white/70 bg-white/95 px-3 py-1.5 text-xs font-semibold text-[#334155] shadow-sm"
+                            class="absolute left-3 top-3 rounded-lg border border-white/70 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-semibold text-[#334155] dark:text-slate-200 shadow-sm"
                         >
                             {{ template.category?.name || 'Portfolio' }}
                         </div>
@@ -390,13 +390,13 @@ const createPortfolio = () => {
 
                     <CardHeader class="space-y-2 px-5 pb-3 pt-5">
                         <CardTitle
-                            class="text-lg font-bold tracking-tight text-[#0F172A]"
+                            class="text-lg font-bold tracking-tight text-[#0F172A] dark:text-slate-100"
                         >
                             {{ template.name }}
                         </CardTitle>
 
                         <CardDescription
-                            class="line-clamp-2 min-h-10 text-sm leading-5 text-[#64748B]"
+                            class="line-clamp-2 min-h-10 text-sm leading-5 text-[#64748B] dark:text-slate-300"
                         >
                             {{ template.description }}
                         </CardDescription>
@@ -405,13 +405,13 @@ const createPortfolio = () => {
                     <CardContent class="px-5 pb-4">
                         <div class="flex flex-wrap gap-2">
                             <span
-                                class="rounded-md bg-[#F0F5F4] px-2.5 py-1 text-xs font-medium text-[#42645E]"
+                                class="rounded-md bg-[#F0F5F4] dark:bg-slate-800 px-2.5 py-1 text-xs font-medium text-[#42645E] dark:text-teal-200"
                             >
                                 Responsive
                             </span>
 
                             <span
-                                class="rounded-md bg-[#F0F5F4] px-2.5 py-1 text-xs font-medium text-[#42645E]"
+                                class="rounded-md bg-[#F0F5F4] dark:bg-slate-800 px-2.5 py-1 text-xs font-medium text-[#42645E] dark:text-teal-200"
                             >
                                 Customizable
                             </span>
@@ -419,11 +419,11 @@ const createPortfolio = () => {
                     </CardContent>
 
                     <CardFooter
-                        class="mt-auto flex items-center justify-between gap-3 border-t border-[#EEF1F1] px-5 py-4"
+                        class="mt-auto flex items-center justify-between gap-3 border-t border-[#EEF1F1] dark:border-slate-700 px-5 py-4"
                     >
                         <Link
                             :href="route('templates.show',{template: template.slug})"
-                            class="text-sm font-semibold text-[#475569] transition hover:text-[#00695C]"
+                            class="text-sm font-semibold text-[#475569] dark:text-slate-300 transition hover:text-[#00695C]"
                         >
                             Preview
                             <span aria-hidden="true">↗</span>
@@ -455,7 +455,7 @@ const createPortfolio = () => {
                         :class="
                             link.active
                                 ? 'border-[#00695C] bg-[#00695C] text-white'
-                                : 'border-[#DCE5E5] bg-white text-[#475569] hover:border-[#00695C] hover:text-[#00695C]'
+                                : 'border-[#DCE5E5] dark:border-slate-600 bg-white dark:bg-slate-900 text-[#475569] dark:text-slate-300 hover:border-[#00695C] hover:text-[#00695C]'
                         "
                     >
                         <span v-html="link.label" />
@@ -463,7 +463,7 @@ const createPortfolio = () => {
 
                     <span
                         v-else
-                        class="cursor-not-allowed rounded-lg border border-[#E2E8E8] bg-[#F0F3F3] px-3.5 py-2 text-sm text-[#A0AAAA]"
+                        class="cursor-not-allowed rounded-lg border border-[#E2E8E8] dark:border-slate-700 bg-[#F0F3F3] dark:bg-slate-800 dark:bg-slate-800 px-3.5 py-2 text-sm text-[#A0AAAA] dark:text-slate-500"
                     >
                         <span v-html="link.label" />
                     </span>
@@ -474,11 +474,11 @@ const createPortfolio = () => {
         <!-- Bottom CTA -->
         <section class="px-5 pb-16 sm:px-8 sm:pb-20 lg:px-10">
             <div
-                class="mx-auto flex max-w-7xl flex-col gap-6 rounded-3xl bg-[#0F172A] px-7 py-10 sm:px-10 sm:py-12 lg:flex-row lg:items-center lg:justify-between lg:px-14"
+                class="mx-auto flex max-w-7xl flex-col gap-6 rounded-3xl bg-[#0F172A] dark:bg-slate-950 px-7 py-10 sm:px-10 sm:py-12 lg:flex-row lg:items-center lg:justify-between lg:px-14"
             >
                 <div class="max-w-2xl">
                     <p
-                        class="text-xs font-bold uppercase tracking-[0.18em] text-[#91C9BC]"
+                        class="text-xs font-bold uppercase tracking-[0.18em] text-[#91C9BC] dark:text-teal-300"
                     >
                         Your portfolio, your rules
                     </p>
@@ -489,7 +489,7 @@ const createPortfolio = () => {
                         Ready to make your work stand out?
                     </h2>
 
-                    <p class="mt-3 text-sm leading-6 text-[#CBD5E1] sm:text-base">
+                    <p class="mt-3 text-sm leading-6 text-[#CBD5E1] dark:text-slate-300 sm:text-base">
                         Pick a template and start building a portfolio that
                         tells your story.
                     </p>
@@ -497,7 +497,7 @@ const createPortfolio = () => {
 
                 <a
                     href="#template-gallery"
-                    class="inline-flex w-fit shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-5 py-3.5 text-sm font-bold text-[#0F172A] transition hover:bg-[#E7F2EF]"
+                    class="inline-flex w-fit shrink-0 items-center justify-center gap-2 rounded-xl bg-white dark:bg-slate-900 px-5 py-3.5 text-sm font-bold text-[#0F172A] dark:text-slate-100 transition hover:bg-[#E7F2EF] dark:bg-slate-700"
                 >
                     Browse templates
                     <span aria-hidden="true">→</span>
@@ -506,9 +506,9 @@ const createPortfolio = () => {
         </section>
 
         <!-- Footer -->
-        <footer class="border-t border-[#E2E8E8] bg-white">
+        <footer class="border-t border-[#E2E8E8] dark:border-slate-700 bg-white dark:bg-slate-900">
             <div
-                class="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-6 text-sm text-[#64748B] sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:px-10"
+                class="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-6 text-sm text-[#64748B] dark:text-slate-300 sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:px-10"
             >
                 <Link :href="route('home')" class="flex items-center">
                     <AppLogo size="sm" />
@@ -516,7 +516,7 @@ const createPortfolio = () => {
 
                 <p>
                     Build something that feels like you.
-                    <span class="text-[#94A3B8]">© {{ new Date().getFullYear() }} quickFolio</span>
+                    <span class="text-[#94A3B8] dark:text-slate-400">© {{ new Date().getFullYear() }} quickFolio</span>
                 </p>
             </div>
         </footer>
@@ -524,11 +524,11 @@ const createPortfolio = () => {
         <!-- Create portfolio dialog -->
         <Dialog v-model:open="isUseModalOpen">
             <DialogContent
-                class="rounded-2xl border-[#E2E8E8] bg-white sm:max-w-md"
+                class="rounded-2xl border-[#E2E8E8] dark:border-slate-700 bg-white dark:bg-slate-900 sm:max-w-md"
             >
                 <DialogHeader>
                     <div
-                        class="mb-2 flex h-11 w-11 items-center justify-center rounded-xl bg-[#E4F2EE] text-[#00695C]"
+                        class="mb-2 flex h-11 w-11 items-center justify-center rounded-xl bg-[#E4F2EE] dark:bg-teal-950/60 dark:bg-teal-950/60 text-[#00695C]"
                     >
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -546,13 +546,13 @@ const createPortfolio = () => {
                         </svg>
                     </div>
 
-                    <DialogTitle class="text-xl font-bold tracking-tight text-[#0F172A]">
+                    <DialogTitle class="text-xl font-bold tracking-tight text-[#0F172A] dark:text-slate-100">
                         Start your portfolio
                     </DialogTitle>
 
-                    <DialogDescription class="leading-6 text-[#64748B]">
+                    <DialogDescription class="leading-6 text-[#64748B] dark:text-slate-300">
                         You selected
-                        <span class="font-semibold text-[#0F172A]">
+                        <span class="font-semibold text-[#0F172A] dark:text-slate-100">
                             {{ selectedTemplate?.name }}
                         </span>.
                         Give your portfolio a name. You can customize the
@@ -563,7 +563,7 @@ const createPortfolio = () => {
                 <form class="space-y-2 py-4" @submit.prevent="createPortfolio">
                     <Label
                         for="portfolio_title"
-                        class="text-sm font-semibold text-[#334155]"
+                        class="text-sm font-semibold text-[#334155] dark:text-slate-200"
                     >
                         Portfolio title
                     </Label>
@@ -574,10 +574,10 @@ const createPortfolio = () => {
                         required
                         maxlength="120"
                         placeholder="e.g. My Developer Portfolio"
-                        class="h-11 rounded-xl border-[#DCE5E5] shadow-none focus-visible:ring-[#00695C]"
+                        class="h-11 rounded-xl border-[#DCE5E5] dark:border-slate-600 bg-white text-slate-900 dark:bg-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 caret-[#00695C] shadow-none focus-visible:ring-[#00695C] focus-visible:ring-offset-0"
                     />
 
-                    <p class="text-xs text-[#94A3B8]">
+                    <p class="text-xs text-[#94A3B8] dark:text-slate-400">
                         You can change this title later.
                     </p>
 
@@ -586,7 +586,7 @@ const createPortfolio = () => {
                             type="button"
                             variant="outline"
                             :disabled="isCreatingPortfolio"
-                            class="rounded-xl border-[#DCE5E5] bg-white"
+                            class="rounded-xl border-[#DCE5E5] dark:border-slate-600 bg-white dark:bg-slate-900"
                             @click="isUseModalOpen = false"
                         >
                             Cancel
@@ -607,3 +607,19 @@ const createPortfolio = () => {
         </Dialog>
     </div>
 </template>
+
+<style>
+/* Keep native input rendering, autofill and date/text controls readable in either theme. */
+input, textarea, select {
+    color-scheme: light;
+}
+.dark input,
+.dark textarea,
+.dark select {
+    color-scheme: dark;
+}
+input::placeholder,
+textarea::placeholder {
+    opacity: 1;
+}
+</style>
