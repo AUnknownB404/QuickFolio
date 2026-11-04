@@ -22,6 +22,7 @@ yarn-error.log
 /.vscode
 /.zed
 *.md
+!README.md
 QUICKFOLIO_PROMOTION_CONTENT.txt
 /QuickFolio Promotional - Video Edit By Anik.mp4
 .neon
