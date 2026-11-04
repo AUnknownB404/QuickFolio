@@ -59,7 +59,7 @@ class PortfolioController extends Controller
             $templateDemo['content']
         );
 
-        return redirect()->route('portfolios.edit', $portfolio);
+        return redirect()->route('portfolios.edit', $portfolio)->with('portfolio_created', true);
     }
 
     public function edit(Request $request, Portfolio $portfolio)
@@ -96,6 +96,7 @@ class PortfolioController extends Controller
             'portfolio' => $portfolio,
             'availableTemplates' => $availableTemplates,
             'fieldDefinitions' => $fieldDefinitions,
+            'showCreationNotice' => $request->session()->get('portfolio_created', false) === true,
         ]);
     }
 
@@ -181,8 +182,8 @@ class PortfolioController extends Controller
             )->validate();
         }
 
-        if ($pendingUploads !== [] && (! is_string(config('filesystems.disks.r2.url')) || trim(config('filesystems.disks.r2.url')) === '')) {
-            throw new \RuntimeException('R2_URL must be configured before uploading files.');
+        if ($pendingUploads !== [] && (! is_string(config('filesystems.disks.neon.endpoint')) || trim(config('filesystems.disks.neon.endpoint')) === '')) {
+            throw new \RuntimeException('Neon Object Storage must be configured before uploading files.');
         }
 
         $storedUploadPaths = [];
@@ -190,13 +191,13 @@ class PortfolioController extends Controller
             $storedUploadUrls = [];
             $directory = "users/{$portfolio->user_id}/templates/{$portfolio->template_id}/portfolios/{$portfolio->id}";
             foreach ($pendingUploads as $uploadId => $file) {
-                $path = $file->store($directory, 'r2');
+                $path = $file->store($directory, 'neon');
                 if ($path === false) {
                     throw new \RuntimeException('Unable to store an uploaded portfolio file.');
                 }
 
                 $storedUploadPaths[] = $path;
-                $storedUploadUrls[$uploadId] = Storage::disk('r2')->url($path);
+                $storedUploadUrls[$uploadId] = Storage::disk('neon')->url($path);
             }
 
             $usedUploads = [];
@@ -275,7 +276,7 @@ class PortfolioController extends Controller
         } catch (Throwable $exception) {
             foreach ($storedUploadPaths as $path) {
                 try {
-                    if (! Storage::disk('r2')->delete($path)) {
+                    if (! Storage::disk('neon')->delete($path)) {
                         report(new \RuntimeException("Could not remove failed portfolio upload: {$path}"));
                     }
                 } catch (Throwable $cleanupException) {
@@ -359,13 +360,17 @@ class PortfolioController extends Controller
 
         $disk = 'public';
         if (isset($urlParts['host'])) {
-            $r2Url = parse_url((string) config('filesystems.disks.r2.url'));
-            if (isset($r2Url['host']) && strcasecmp($urlParts['host'], $r2Url['host']) === 0) {
-                $disk = 'r2';
+            $neonEndpoint = parse_url((string) config('filesystems.disks.neon.endpoint'));
+            if (isset($neonEndpoint['host']) && strcasecmp($urlParts['host'], $neonEndpoint['host']) === 0) {
+                $disk = 'neon';
                 $urlPath = ltrim($urlPath, '/');
-                $basePath = trim((string) ($r2Url['path'] ?? ''), '/');
+                $basePath = trim((string) ($neonEndpoint['path'] ?? ''), '/');
                 if ($basePath !== '' && str_starts_with($urlPath, $basePath.'/')) {
                     $urlPath = substr($urlPath, strlen($basePath) + 1);
+                }
+                $bucket = (string) config('filesystems.disks.neon.bucket');
+                if ($bucket !== '' && str_starts_with($urlPath, $bucket.'/')) {
+                    $urlPath = substr($urlPath, strlen($bucket) + 1);
                 }
             } elseif (str_starts_with($urlPath, '/storage/')) {
                 $urlPath = substr($urlPath, strlen('/storage/'));

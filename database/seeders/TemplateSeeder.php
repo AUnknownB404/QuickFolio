@@ -167,7 +167,17 @@ class TemplateSeeder extends Seeder
             ],
         ];
 
-        $sections = ['navbar', 'header', 'about', 'journey', 'skills', 'projects', 'contact'];
+        $sections = ['navbar', 'header', 'about', 'journey', 'skills', 'projects', 'services', 'contact'];
+        $sectionFieldPrefixes = [
+            'navbar' => ['logo_', 'sticky_nav', 'show_logo'],
+            'header' => ['hero_'],
+            'about' => ['about_'],
+            'journey' => ['journey_'],
+            'skills' => ['skills_'],
+            'projects' => ['projects_'],
+            'services' => ['services_'],
+            'contact' => ['contact_'],
+        ];
         $fieldDefs = FieldDefinition::all()->keyBy('field_key');
 
         foreach ($templatesData as $tData) {
@@ -183,41 +193,16 @@ class TemplateSeeder extends Seeder
                 );
             }
 
-            $templateSections = $tData['slug'] === 'cobalt-brutalist'
-                ? [...$sections, 'services']
-                : $sections;
-
-            foreach ($templateSections as $order => $secKey) {
+            foreach ($sections as $order => $secKey) {
                 $section = TemplateSection::updateOrCreate(
                     ['template_id' => $template->id, 'section_key' => $secKey],
                     ['is_enabled' => true, 'display_order' => $order]
                 );
 
-                $keysForSection = match ($secKey) {
-                    'navbar' => $tData['slug'] === 'cobalt-brutalist'
-                        ? ['logo_text', 'logo_image']
-                        : ['logo_text'],
-                    'header' => ['hero_greeting', 'hero_name', 'hero_role', 'hero_description', 'hero_image', 'hero_cta_primary_text', 'hero_cta_primary_url', 'hero_social_links'],
-                    'about' => ['about_title', 'about_description', 'about_image', 'about_cv_file'],
-                    'journey' => ['journey_title', 'journey_subtitle', 'journey_list'],
-                    'skills' => ['skills_title', 'skills_description', 'skills_list'],
-                    'projects' => ['projects_title', 'projects_subtitle', 'projects_list'],
-                    'contact' => ['contact_title', 'contact_description', 'contact_email', 'contact_phone', 'contact_location'],
-                    'services' => ['services_title', 'services_subtitle', 'services_list'],
-                    default => [],
-                };
-
-                if ($tData['slug'] === 'cobalt-brutalist') {
-                    $keysForSection = array_merge($keysForSection, match ($secKey) {
-                        'navbar' => [],
-                        'header' => ['hero_background_image', 'hero_cta_secondary_text', 'hero_cta_secondary_url'],
-                        'about' => ['about_subtitle', 'about_highlights', 'about_cta_text', 'about_cta_url'],
-                        'skills' => ['skills_subtitle', 'skills_show_level', 'skills_show_icon'],
-                        'projects' => ['projects_description', 'projects_show_featured'],
-                        'contact' => ['contact_subtitle', 'contact_social_links', 'contact_form_enabled'],
-                        default => [],
-                    });
-                }
+                $keysForSection = $fieldDefs->keys()
+                    ->filter(fn (string $fieldKey) => collect($sectionFieldPrefixes[$secKey] ?? [])
+                        ->contains(fn (string $prefix) => str_starts_with($fieldKey, $prefix)))
+                    ->all();
 
                 foreach ($keysForSection as $fKey) {
                     if (isset($fieldDefs[$fKey])) {

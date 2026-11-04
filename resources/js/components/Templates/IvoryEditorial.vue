@@ -173,7 +173,6 @@ const hasHeroCtas = computed(
 );
 
 // About
-const aboutWords = computed(() => (text('about', 'about_description') ?? '').split(/\s+/).filter(Boolean));
 const highlights = computed(() =>
     arr('about', 'about_highlights')
         .map((h) => (typeof h === 'string' ? clean(h) : clean(h?.title ?? h?.label ?? h?.text ?? h?.name)) ?? '')

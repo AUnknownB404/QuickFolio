@@ -111,10 +111,95 @@ class PortfolioBuilderTest extends TestCase
             ->first(fn (PortfolioFieldValue $value) => $value->fieldDefinition->field_key === 'projects_list');
 
         $response->assertRedirect(route('portfolios.edit', $portfolio));
+        $this->get(route('portfolios.edit', $portfolio))
+            ->assertInertia(fn ($page) => $page
+                ->component('Portfolios/Edit')
+                ->where('showCreationNotice', true));
         $this->assertNotNull($heroName);
         $this->assertNotNull($projects);
         $this->assertSame('Akash Hossen', $heroName->value);
         $this->assertSame('Sales & Invoice Management System', $projects->value[0]['title']);
+    }
+
+    public function test_new_portfolios_include_a_services_section_in_the_editor(): void
+    {
+        $this->seed();
+        $user = User::factory()->create();
+        $template = Template::published()->where('slug', '!=', 'cobalt-brutalist')->firstOrFail();
+
+        $this->assertSame(
+            0,
+            Template::published()
+                ->whereDoesntHave('sections', fn ($query) => $query->where('section_key', 'services'))
+                ->count(),
+        );
+
+        $this->actingAs($user)->post(route('templates.use', $template->slug), [
+            'title' => 'Creative Portfolio',
+        ]);
+
+        $portfolio = Portfolio::where('user_id', $user->id)->firstOrFail();
+        $this->assertDatabaseHas('portfolio_sections', [
+            'portfolio_id' => $portfolio->id,
+            'section_key' => 'services',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('portfolios.edit', $portfolio))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Portfolios/Edit')
+                ->has('portfolio.sections', 8));
+    }
+
+    public function test_portfolio_creation_adds_services_for_templates_not_yet_reseeded(): void
+    {
+        $this->seed();
+        $user = User::factory()->create();
+        $template = Template::create([
+            'name' => 'Legacy Template',
+            'slug' => 'legacy-template',
+            'is_published' => true,
+        ]);
+
+        $portfolio = app(PortfolioService::class)->createForUser($user, $template, 'Legacy Portfolio');
+
+        $this->assertDatabaseHas('portfolio_sections', [
+            'portfolio_id' => $portfolio->id,
+            'section_key' => 'services',
+            'is_enabled' => true,
+        ]);
+    }
+
+    public function test_creating_a_portfolio_populates_demo_services_for_templates_without_a_services_section(): void
+    {
+        $this->seed();
+        $user = User::factory()->create();
+        $template = Template::create([
+            'name' => 'Legacy Template',
+            'slug' => 'legacy-template',
+            'is_published' => true,
+        ]);
+
+        $this->actingAs($user)->post(route('templates.use', $template->slug), [
+            'title' => 'Legacy Portfolio',
+        ]);
+
+        $portfolio = Portfolio::where('user_id', $user->id)->firstOrFail();
+        $services = $portfolio->sections()
+            ->where('section_key', 'services')
+            ->with('fieldValues.fieldDefinition')
+            ->firstOrFail();
+        $title = $services->fieldValues
+            ->first(fn (PortfolioFieldValue $value) => $value->fieldDefinition->field_key === 'services_title');
+        $list = $services->fieldValues
+            ->first(fn (PortfolioFieldValue $value) => $value->fieldDefinition->field_key === 'services_list');
+
+        $this->assertNotNull($title);
+        $this->assertNotNull($list);
+        $this->assertSame('What I Can Do For You', $title->value);
+        $this->assertSame(3, count($list->value));
+        $this->assertSame('Product Design', $list->value[0]['title']);
     }
 
     public function test_ivory_editorial_template_is_seeded_and_previewable()
@@ -212,7 +297,10 @@ class PortfolioBuilderTest extends TestCase
             ->fields
             ->pluck('fieldDefinition.field_key')
             ->all();
-        $this->assertEqualsCanonicalizing(['logo_text', 'logo_image'], $navbarFields);
+        $this->assertEqualsCanonicalizing(
+            ['logo_text', 'logo_image', 'sticky_nav', 'show_logo'],
+            $navbarFields
+        );
 
         $portfolio = app(PortfolioService::class)->createForUser(
             User::factory()->create(),
@@ -221,6 +309,42 @@ class PortfolioBuilderTest extends TestCase
         );
 
         $this->assertTrue($portfolio->sections->contains('section_key', 'services'));
+    }
+
+    public function test_all_templates_expose_all_fields_for_each_section()
+    {
+        $this->seed();
+
+        $templates = Template::with('sections.fields.fieldDefinition')->get();
+        $this->assertNotEmpty($templates);
+
+        $sectionPrefixes = [
+            'navbar' => ['logo_', 'sticky_nav', 'show_logo'],
+            'header' => ['hero_'],
+            'about' => ['about_'],
+            'journey' => ['journey_'],
+            'skills' => ['skills_'],
+            'projects' => ['projects_'],
+            'services' => ['services_'],
+            'contact' => ['contact_'],
+        ];
+        $fieldKeys = FieldDefinition::pluck('field_key');
+
+        foreach ($templates as $template) {
+            foreach ($sectionPrefixes as $sectionKey => $prefixes) {
+                $expectedFields = $fieldKeys
+                    ->filter(fn (string $fieldKey) => collect($prefixes)
+                        ->contains(fn (string $prefix) => str_starts_with($fieldKey, $prefix)))
+                    ->all();
+                $actualFields = $template->sections
+                    ->firstWhere('section_key', $sectionKey)
+                    ->fields
+                    ->pluck('fieldDefinition.field_key')
+                    ->all();
+
+                $this->assertEqualsCanonicalizing($expectedFields, $actualFields, "{$template->slug}: {$sectionKey}");
+            }
+        }
     }
 
     public function test_navbar_templates_do_not_expose_navigation_or_cta_fields()
@@ -566,16 +690,17 @@ class PortfolioBuilderTest extends TestCase
         $user = User::factory()->create();
         $template = Template::published()->first();
         $portfolio = app(PortfolioService::class)->createForUser($user, $template, 'Upload Test');
-        Storage::fake('r2');
-        $r2Root = Storage::disk('r2')->path('');
-        config(['filesystems.disks.r2' => [
+        Storage::fake('neon');
+        $neonRoot = Storage::disk('neon')->path('');
+        config(['filesystems.disks.neon' => [
             'driver' => 'local',
-            'root' => $r2Root,
+            'root' => $neonRoot,
             'url' => 'https://images.example.test',
+            'endpoint' => 'https://images.example.test',
             'throw' => true,
             'report' => false,
         ]]);
-        Storage::forgetDisk('r2');
+        Storage::forgetDisk('neon');
 
         $file = $this->fakeImage();
 
@@ -594,7 +719,7 @@ class PortfolioBuilderTest extends TestCase
             "users/{$user->id}/templates/{$template->id}/portfolios/{$portfolio->id}/",
             $path
         );
-        Storage::disk('r2')->assertExists($path);
+        Storage::disk('neon')->assertExists($path);
     }
 
     public function test_user_can_upload_document_to_portfolio_storage()
@@ -603,16 +728,17 @@ class PortfolioBuilderTest extends TestCase
         $user = User::factory()->create();
         $template = Template::published()->first();
         $portfolio = app(PortfolioService::class)->createForUser($user, $template, 'Document Upload Test');
-        Storage::fake('r2');
-        $r2Root = Storage::disk('r2')->path('');
-        config(['filesystems.disks.r2' => [
+        Storage::fake('neon');
+        $neonRoot = Storage::disk('neon')->path('');
+        config(['filesystems.disks.neon' => [
             'driver' => 'local',
-            'root' => $r2Root,
+            'root' => $neonRoot,
             'url' => 'https://images.example.test',
+            'endpoint' => 'https://images.example.test',
             'throw' => true,
             'report' => false,
         ]]);
-        Storage::forgetDisk('r2');
+        Storage::forgetDisk('neon');
 
         $response = $this->actingAs($user)
             ->postJson(route('portfolios.upload', $portfolio), [
@@ -627,7 +753,7 @@ class PortfolioBuilderTest extends TestCase
             $path
         );
         $this->assertSame('https://images.example.test/'.$path, $response->json('url'));
-        Storage::disk('r2')->assertExists($path);
+        Storage::disk('neon')->assertExists($path);
     }
 
     public function test_portfolio_update_stores_pending_uploads_with_their_field_values()
@@ -642,16 +768,17 @@ class PortfolioBuilderTest extends TestCase
         $resumeFile = FieldDefinition::where('field_key', 'about_cv_file')->firstOrFail();
         $aboutCtaUrl = FieldDefinition::where('field_key', 'about_cta_url')->firstOrFail();
 
-        Storage::fake('r2');
-        $r2Root = Storage::disk('r2')->path('');
-        config(['filesystems.disks.r2' => [
+        Storage::fake('neon');
+        $neonRoot = Storage::disk('neon')->path('');
+        config(['filesystems.disks.neon' => [
             'driver' => 'local',
-            'root' => $r2Root,
+            'root' => $neonRoot,
             'url' => 'https://images.example.test',
+            'endpoint' => 'https://images.example.test',
             'throw' => true,
             'report' => false,
         ]]);
-        Storage::forgetDisk('r2');
+        Storage::forgetDisk('neon');
 
         $uploadId = str_repeat('a', 32);
         $fileUploadId = str_repeat('b', 32);
@@ -701,11 +828,11 @@ class PortfolioBuilderTest extends TestCase
                 "users/{$user->id}/templates/{$template->id}/portfolios/{$portfolio->id}/",
                 $path
             );
-            Storage::disk('r2')->assertExists($path);
+            Storage::disk('neon')->assertExists($path);
         }
     }
 
-    public function test_removing_portfolio_image_clears_field_and_deletes_r2_object()
+    public function test_removing_portfolio_image_clears_field_and_deletes_neon_object()
     {
         $this->seed();
         $user = User::factory()->create();
@@ -714,19 +841,20 @@ class PortfolioBuilderTest extends TestCase
         $header = $portfolio->sections()->where('section_key', 'header')->firstOrFail();
         $heroImage = FieldDefinition::where('field_key', 'hero_image')->firstOrFail();
 
-        Storage::fake('r2');
-        $r2Root = Storage::disk('r2')->path('');
-        config(['filesystems.disks.r2' => [
+        Storage::fake('neon');
+        $neonRoot = Storage::disk('neon')->path('');
+        config(['filesystems.disks.neon' => [
             'driver' => 'local',
-            'root' => $r2Root,
+            'root' => $neonRoot,
             'url' => 'https://images.example.test',
+            'endpoint' => 'https://images.example.test',
             'throw' => true,
             'report' => false,
         ]]);
-        Storage::forgetDisk('r2');
+        Storage::forgetDisk('neon');
 
         $path = "users/{$user->id}/templates/{$template->id}/portfolios/{$portfolio->id}/hero.webp";
-        Storage::disk('r2')->put($path, 'image-content');
+        Storage::disk('neon')->put($path, 'image-content');
         PortfolioFieldValue::updateOrCreate(
             [
                 'portfolio_section_id' => $header->id,
@@ -750,28 +878,29 @@ class PortfolioBuilderTest extends TestCase
             ->where('field_definition_id', $heroImage->id)
             ->firstOrFail()
             ->value);
-        Storage::disk('r2')->assertMissing($path);
+        Storage::disk('neon')->assertMissing($path);
     }
 
-    public function test_portfolio_download_includes_images_from_r2()
+    public function test_portfolio_download_includes_images_from_neon()
     {
         $this->seed();
         $user = User::factory()->create();
         $template = Template::where('slug', 'dark-orange-designer')->firstOrFail();
-        $portfolio = app(PortfolioService::class)->createForUser($user, $template, 'R2 Export Test');
-        Storage::fake('r2');
-        $r2Root = Storage::disk('r2')->path('');
-        config(['filesystems.disks.r2' => [
+        $portfolio = app(PortfolioService::class)->createForUser($user, $template, 'neon Export Test');
+        Storage::fake('neon');
+        $neonRoot = Storage::disk('neon')->path('');
+        config(['filesystems.disks.neon' => [
             'driver' => 'local',
-            'root' => $r2Root,
+            'root' => $neonRoot,
             'url' => 'https://images.example.test',
+            'endpoint' => 'https://images.example.test',
             'throw' => true,
             'report' => false,
         ]]);
-        Storage::forgetDisk('r2');
+        Storage::forgetDisk('neon');
 
-        $assetPath = "users/{$user->id}/templates/{$template->id}/portfolios/{$portfolio->id}/r2-profile.png";
-        Storage::disk('r2')->put($assetPath, 'r2-profile-image');
+        $assetPath = "users/{$user->id}/templates/{$template->id}/portfolios/{$portfolio->id}/neon-profile.png";
+        Storage::disk('neon')->put($assetPath, 'neon-profile-image');
         $header = $portfolio->sections()->where('section_key', 'header')->firstOrFail();
         PortfolioFieldValue::updateOrCreate(
             [
@@ -790,9 +919,9 @@ class PortfolioBuilderTest extends TestCase
         $archive = new ZipArchive;
         $this->assertTrue($archive->open($archivePath));
         try {
-            $exportedImagePath = 'assets/'.substr(hash('sha256', $assetPath), 0, 12).'-r2-profile.png';
+            $exportedImagePath = 'assets/'.substr(hash('sha256', $assetPath), 0, 12).'-neon-profile.png';
             $this->assertStringContainsString($exportedImagePath, $archive->getFromName('index.html'));
-            $this->assertSame('r2-profile-image', $archive->getFromName($exportedImagePath));
+            $this->assertSame('neon-profile-image', $archive->getFromName($exportedImagePath));
         } finally {
             $archive->close();
             unlink($archivePath);
@@ -1441,16 +1570,17 @@ class PortfolioBuilderTest extends TestCase
         $template = Template::published()->first();
         $portfolio = app(PortfolioService::class)->createForUser($user, $template, 'Replace Upload Test');
         Storage::fake('public');
-        Storage::fake('r2');
-        $r2Root = Storage::disk('r2')->path('');
-        config(['filesystems.disks.r2' => [
+        Storage::fake('neon');
+        $neonRoot = Storage::disk('neon')->path('');
+        config(['filesystems.disks.neon' => [
             'driver' => 'local',
-            'root' => $r2Root,
+            'root' => $neonRoot,
             'url' => 'https://images.example.test',
+            'endpoint' => 'https://images.example.test',
             'throw' => true,
             'report' => false,
         ]]);
-        Storage::forgetDisk('r2');
+        Storage::forgetDisk('neon');
 
         $oldPath = "users/{$user->id}/templates/{$template->id}/portfolios/{$portfolio->id}/old-resume.pdf";
         Storage::disk('public')->put($oldPath, 'old resume');
@@ -1493,29 +1623,30 @@ class PortfolioBuilderTest extends TestCase
         $this->assertSame($uploadResponse->json('url'), $savedValue);
         $this->assertSame('https://images.example.test/'.$uploadResponse->json('path'), $savedValue);
         Storage::disk('public')->assertMissing($oldPath);
-        Storage::disk('r2')->assertExists($uploadResponse->json('path'));
+        Storage::disk('neon')->assertExists($uploadResponse->json('path'));
     }
 
-    public function test_replacing_an_uploaded_image_removes_the_previous_r2_object_after_saving()
+    public function test_replacing_an_uploaded_image_removes_the_previous_neon_object_after_saving()
     {
         $this->seed();
         $user = User::factory()->create();
         $template = Template::published()->first();
         $portfolio = app(PortfolioService::class)->createForUser($user, $template, 'Replace Image Test');
-        Storage::fake('r2');
-        $r2Root = Storage::disk('r2')->path('');
-        config(['filesystems.disks.r2' => [
+        Storage::fake('neon');
+        $neonRoot = Storage::disk('neon')->path('');
+        config(['filesystems.disks.neon' => [
             'driver' => 'local',
-            'root' => $r2Root,
+            'root' => $neonRoot,
             'url' => 'https://images.example.test',
+            'endpoint' => 'https://images.example.test',
             'throw' => true,
             'report' => false,
         ]]);
-        Storage::forgetDisk('r2');
+        Storage::forgetDisk('neon');
 
         $directory = "users/{$user->id}/templates/{$template->id}/portfolios/{$portfolio->id}";
         $oldPath = "{$directory}/old-image.png";
-        Storage::disk('r2')->put($oldPath, 'old image');
+        Storage::disk('neon')->put($oldPath, 'old image');
 
         $aboutSection = $portfolio->sections()->where('section_key', 'about')->firstOrFail();
         $imageField = FieldDefinition::where('field_key', 'about_image')->first();
@@ -1535,7 +1666,7 @@ class PortfolioBuilderTest extends TestCase
             'type' => 'image',
         ]);
         $uploadResponse->assertOk();
-        Storage::disk('r2')->assertExists($oldPath);
+        Storage::disk('neon')->assertExists($oldPath);
 
         $sections = $portfolio->sections()->get()->map(fn ($section) => [
             'id' => $section->id,
@@ -1551,8 +1682,8 @@ class PortfolioBuilderTest extends TestCase
         $this->patch(route('portfolios.update', $portfolio), ['sections' => $sections])
             ->assertSessionHasNoErrors();
 
-        Storage::disk('r2')->assertMissing($oldPath);
-        Storage::disk('r2')->assertExists($uploadResponse->json('path'));
+        Storage::disk('neon')->assertMissing($oldPath);
+        Storage::disk('neon')->assertExists($uploadResponse->json('path'));
     }
 
     public function test_user_cannot_upload_to_another_users_portfolio()

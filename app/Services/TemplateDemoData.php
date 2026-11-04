@@ -6,7 +6,7 @@ use App\Models\Template;
 
 class TemplateDemoData
 {
-    public const ASSET_HOST = 'pub-3e54a7c219cc4b1c8b8faf9ad3427681.r2.dev';
+    public const ASSET_HOST = 'br-spring-field-azyez6kd.storage.c-3.ap-southeast-1.aws.neon.tech/portfolio-assets';
 
     public function forTemplate(Template $template): array
     {

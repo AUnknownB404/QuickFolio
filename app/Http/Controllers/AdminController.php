@@ -131,17 +131,17 @@ class AdminController extends Controller
         $thumbnail = $validated['thumbnail'] ?? null;
         unset($validated['thumbnail']);
 
-        if ($thumbnail && (! is_string(config('filesystems.disks.r2.url')) || trim(config('filesystems.disks.r2.url')) === '')) {
-            throw new RuntimeException('R2_URL must be configured before storing template thumbnails.');
+        if ($thumbnail && (! is_string(config('filesystems.disks.neon.endpoint')) || trim(config('filesystems.disks.neon.endpoint')) === '')) {
+            throw new RuntimeException('Neon Object Storage must be configured before storing template thumbnails.');
         }
 
-        $thumbnailPath = $thumbnail?->store('templates', 'r2');
+        $thumbnailPath = $thumbnail?->store('templates', 'neon');
         if ($thumbnail && ! is_string($thumbnailPath)) {
             throw new RuntimeException('The template thumbnail could not be stored.');
         }
 
         $validated['thumbnail'] = $thumbnailPath
-            ? Storage::disk('r2')->url($thumbnailPath)
+            ? Storage::disk('neon')->url($thumbnailPath)
             : null;
 
         Template::create($validated);
@@ -156,18 +156,18 @@ class AdminController extends Controller
         $thumbnail = $validated['thumbnail'] ?? null;
         unset($validated['thumbnail']);
 
-        if ($thumbnail && (! is_string(config('filesystems.disks.r2.url')) || trim(config('filesystems.disks.r2.url')) === '')) {
-            throw new RuntimeException('R2_URL must be configured before storing template thumbnails.');
+        if ($thumbnail && (! is_string(config('filesystems.disks.neon.endpoint')) || trim(config('filesystems.disks.neon.endpoint')) === '')) {
+            throw new RuntimeException('Neon Object Storage must be configured before storing template thumbnails.');
         }
 
-        $thumbnailPath = $thumbnail?->store('templates', 'r2');
+        $thumbnailPath = $thumbnail?->store('templates', 'neon');
         if ($thumbnail && ! is_string($thumbnailPath)) {
             throw new RuntimeException('The template thumbnail could not be stored.');
         }
 
         if ($thumbnail) {
             $previousThumbnail = $template->thumbnail;
-            $validated['thumbnail'] = Storage::disk('r2')->url($thumbnailPath);
+            $validated['thumbnail'] = Storage::disk('neon')->url($thumbnailPath);
         } else {
             $previousThumbnail = null;
         }
@@ -219,17 +219,21 @@ class AdminController extends Controller
 
         if (Str::startsWith($thumbnail, ['http://', 'https://'])) {
             $thumbnailHost = parse_url($thumbnail, PHP_URL_HOST);
-            $r2Url = parse_url((string) config('filesystems.disks.r2.url'));
-            $r2Host = $r2Url['host'] ?? null;
+            $neonEndpoint = parse_url((string) config('filesystems.disks.neon.endpoint'));
+            $neonHost = $neonEndpoint['host'] ?? null;
 
-            if ($r2Host && strcasecmp((string) $thumbnailHost, $r2Host) === 0) {
+            if ($neonHost && strcasecmp((string) $thumbnailHost, $neonHost) === 0) {
                 $path = ltrim((string) (parse_url($thumbnail, PHP_URL_PATH) ?? ''), '/');
-                $basePath = trim((string) ($r2Url['path'] ?? ''), '/');
+                $basePath = trim((string) ($neonEndpoint['path'] ?? ''), '/');
                 if ($basePath !== '' && Str::startsWith($path, $basePath.'/')) {
                     $path = substr($path, strlen($basePath) + 1);
                 }
+                $bucket = (string) config('filesystems.disks.neon.bucket');
+                if ($bucket !== '' && str_starts_with($path, $bucket.'/')) {
+                    $path = substr($path, strlen($bucket) + 1);
+                }
 
-                Storage::disk('r2')->delete(rawurldecode($path));
+                Storage::disk('neon')->delete(rawurldecode($path));
 
                 return;
             }

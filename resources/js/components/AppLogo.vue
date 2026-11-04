@@ -24,7 +24,7 @@ const textSizes = {
 <template>
     <div :class="['inline-flex shrink-0 items-center gap-2.5', props.class]">
         <img src="/logo.svg" alt="" :class="[iconSizes[props.size], 'object-contain']" />
-        <span :class="['font-bold tracking-tight text-[#0F172A]', textSizes[props.size]]">
+        <span :class="['font-bold tracking-tight text-[#0F172A] dark:text-white', textSizes[props.size]]">
             quick<span class="text-[#00695C]">Folio</span>
         </span>
     </div>

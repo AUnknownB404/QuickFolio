@@ -12,6 +12,8 @@ use App\Http\Controllers\PortfolioExport\NebulaGlassTemplate;
 use App\Http\Controllers\PortfolioExport\NewsprintTemplate;
 use App\Http\Controllers\PortfolioExport\PaperStackTemplate;
 use App\Http\Controllers\PortfolioExport\StreamBandsTemplate;
+use App\Http\Controllers\PortfolioExport\SwissGridTemplate;
+use App\Http\Controllers\PortfolioExport\SwissSignalTemplate;
 use App\Http\Controllers\PortfolioExport\PortfolioExportScripts;
 use App\Models\Portfolio;
 use App\Models\Template;
@@ -40,6 +42,8 @@ class PortfolioExportController extends Controller
     use NewsprintTemplate;
     use PaperStackTemplate;
     use StreamBandsTemplate;
+    use SwissGridTemplate;
+    use SwissSignalTemplate;
 
     private const TEMPLATE_THEMES = [
         'emerald-minimalist' => 'emerald',
@@ -52,7 +56,8 @@ class PortfolioExportController extends Controller
         'command-deck' => 'command',
         'paper-stack' => 'paper',
         'stream-bands' => 'stream',
-
+        'swiss-grid' => 'swiss',
+        'swiss-signal'=> 'swiss-signal',
     ];
 
     private const TEMPLATE_RENDERERS = [
@@ -772,13 +777,17 @@ class PortfolioExportController extends Controller
 
         $disk = 'public';
         if (isset($urlParts['host'])) {
-            $r2Url = parse_url((string) config('filesystems.disks.r2.url'));
-            if (isset($r2Url['host']) && strcasecmp($urlParts['host'], $r2Url['host']) === 0) {
-                $disk = 'r2';
+            $neonEndpoint = parse_url((string) config('filesystems.disks.neon.endpoint'));
+            if (isset($neonEndpoint['host']) && strcasecmp($urlParts['host'], $neonEndpoint['host']) === 0) {
+                $disk = 'neon';
                 $path = ltrim($path, '/');
-                $basePath = trim((string) ($r2Url['path'] ?? ''), '/');
+                $basePath = trim((string) ($neonEndpoint['path'] ?? ''), '/');
                 if ($basePath !== '' && str_starts_with($path, $basePath.'/')) {
                     $path = substr($path, strlen($basePath) + 1);
+                }
+                $bucket = (string) config('filesystems.disks.neon.bucket');
+                if ($bucket !== '' && str_starts_with($path, $bucket.'/')) {
+                    $path = substr($path, strlen($bucket) + 1);
                 }
             } elseif (str_starts_with($path, '/storage/')) {
                 $path = substr($path, strlen('/storage/'));

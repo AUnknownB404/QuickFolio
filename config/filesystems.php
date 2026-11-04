@@ -60,18 +60,14 @@ return [
             'report' => false,
         ],
 
-        'r2' => [
+        'neon' => [
             'driver' => 's3',
-            'key' => env('R2_ACCESS_KEY_ID'),
-            'secret' => env('R2_SECRET_ACCESS_KEY'),
-            'region' => 'auto',
-            'bucket' => env('R2_BUCKET'),
-            'url' => env('R2_URL'),
-            'endpoint' => env('R2_ENDPOINT'),
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_REGION', 'us-east-1'),
+            'bucket' => 'portfolio-assets',
+            'endpoint' => env('AWS_ENDPOINT_URL_S3'),
             'use_path_style_endpoint' => true,
-            'options' => [
-                'before_upload' => ['App\\Filesystem\\R2UploadOptions', 'withoutAcl'],
-            ],
             'throw' => true,
             'report' => false,
         ],

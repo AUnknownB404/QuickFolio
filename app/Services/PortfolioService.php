@@ -26,7 +26,7 @@ class PortfolioService
             $slug = Str::slug($title);
             $count = Portfolio::where('slug', 'like', "{$slug}%")->count();
             if ($count > 0) {
-                $slug = "{$slug}-" . ($count + 1);
+                $slug = "{$slug}-".($count + 1);
             }
 
             $portfolio = Portfolio::create([
@@ -40,14 +40,25 @@ class PortfolioService
 
             // Initialize portfolio sections from template sections
             foreach ($template->sections as $templateSection) {
-                $portfolioSection = PortfolioSection::create([
+                PortfolioSection::create([
                     'portfolio_id' => $portfolio->id,
                     'section_key' => $templateSection->section_key,
                     'is_enabled' => $templateSection->is_enabled,
                     'display_order' => $templateSection->display_order,
                 ]);
+            }
 
-                foreach ($initialContent[$templateSection->section_key] ?? [] as $fieldKey => $value) {
+            $this->ensureServicesSection($portfolio);
+            $portfolioSections = $portfolio->sections()->get()->keyBy('section_key');
+
+            foreach ($initialContent as $sectionKey => $sectionContent) {
+                $portfolioSection = $portfolioSections->get($sectionKey);
+
+                if (! $portfolioSection) {
+                    continue;
+                }
+
+                foreach ($sectionContent as $fieldKey => $value) {
                     $fieldDefinition = $fieldDefinitions->get($fieldKey);
 
                     if ($fieldDefinition && $value !== null) {
@@ -74,7 +85,7 @@ class PortfolioService
             $existingSectionKeys = $portfolio->sections()->pluck('section_key')->toArray();
 
             foreach ($newTemplate->sections as $newSection) {
-                if (!in_array($newSection->section_key, $existingSectionKeys)) {
+                if (! in_array($newSection->section_key, $existingSectionKeys)) {
                     PortfolioSection::create([
                         'portfolio_id' => $portfolio->id,
                         'section_key' => $newSection->section_key,
@@ -84,7 +95,23 @@ class PortfolioService
                 }
             }
 
+            $this->ensureServicesSection($portfolio);
+
             return $portfolio->load(['sections.fieldValues.fieldDefinition', 'template.sections.fields.fieldDefinition']);
         });
+    }
+
+    private function ensureServicesSection(Portfolio $portfolio): void
+    {
+        if ($portfolio->sections()->where('section_key', 'services')->exists()) {
+            return;
+        }
+
+        PortfolioSection::create([
+            'portfolio_id' => $portfolio->id,
+            'section_key' => 'services',
+            'is_enabled' => true,
+            'display_order' => ((int) $portfolio->sections()->max('display_order')) + 1,
+        ]);
     }
 }

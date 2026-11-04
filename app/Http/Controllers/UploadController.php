@@ -34,11 +34,11 @@ class UploadController extends Controller
         ]);
 
         $directory = "users/{$portfolio->user_id}/templates/{$portfolio->template_id}/portfolios/{$portfolio->id}";
-        if (! is_string(config('filesystems.disks.r2.url')) || trim(config('filesystems.disks.r2.url')) === '') {
-            throw new RuntimeException('R2_URL must be configured before uploading files.');
+        if (! is_string(config('filesystems.disks.neon.endpoint')) || trim(config('filesystems.disks.neon.endpoint')) === '') {
+            throw new RuntimeException('Neon Object Storage must be configured before uploading files.');
         }
 
-        $disk = 'r2';
+        $disk = 'neon';
         $path = $request->file('file')->store($directory, $disk);
 
         if ($path === false) {

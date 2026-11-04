@@ -165,16 +165,17 @@ class AdminPanelTest extends TestCase
 
     public function test_administrators_can_create_templates_with_thumbnail_images(): void
     {
-        Storage::fake('r2');
-        $r2Root = Storage::disk('r2')->path('');
-        config(['filesystems.disks.r2' => [
+        Storage::fake('neon');
+        $neonRoot = Storage::disk('neon')->path('');
+        config(['filesystems.disks.neon' => [
             'driver' => 'local',
-            'root' => $r2Root,
+            'root' => $neonRoot,
             'url' => 'https://images.example.test',
+            'endpoint' => 'https://images.example.test',
             'throw' => true,
             'report' => false,
         ]]);
-        Storage::forgetDisk('r2');
+        Storage::forgetDisk('neon');
         $admin = User::factory()->create();
         $admin->role = 'admin';
         $admin->save();
@@ -200,7 +201,7 @@ class AdminPanelTest extends TestCase
         $this->assertTrue($template->is_published);
         $this->assertStringStartsWith('https://images.example.test/templates/', $template->thumbnail);
         $oldThumbnailPath = substr($template->thumbnail, strlen('https://images.example.test/'));
-        Storage::disk('r2')->assertExists($oldThumbnailPath);
+        Storage::disk('neon')->assertExists($oldThumbnailPath);
 
         $this->actingAs($admin)
             ->patch(route('admin.templates.update', $template), [
@@ -217,12 +218,12 @@ class AdminPanelTest extends TestCase
             ])
             ->assertRedirect();
 
-        Storage::disk('r2')->assertMissing($oldThumbnailPath);
+        Storage::disk('neon')->assertMissing($oldThumbnailPath);
         $newThumbnailPath = substr(
             $template->fresh()->thumbnail,
             strlen('https://images.example.test/')
         );
-        Storage::disk('r2')->assertExists($newThumbnailPath);
+        Storage::disk('neon')->assertExists($newThumbnailPath);
     }
 
     public function test_administrators_cannot_remove_their_own_admin_access(): void

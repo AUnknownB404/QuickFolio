@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import AdditionalPortfolioFields from '@/components/Templates/AdditionalPortfolioFields.vue';
 import { getTemplateComponent } from '@/components/Templates/TemplateRegistry';
 import { Head, Link } from '@inertiajs/vue3';
+import { ArrowUpRight, LayoutTemplate } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 interface FieldDefinition {
@@ -39,7 +41,8 @@ interface Portfolio {
     sections: PortfolioSection[];
     user: {
         name: string;
-        email: string;
+        // Not used on this page. If your controller still sends it, remove it: it would be visible in a public page's source.
+        email?: string;
     };
 }
 
@@ -51,6 +54,12 @@ const props = defineProps<{
         portfoliosUrl: string;
     };
 }>();
+
+/* -------------------------------------------------------------------------
+ * Editor live preview — message protocol with the editor (unchanged)
+ *   in : { type: 'quickfolio:live-preview', content, portfolio }
+ *   out: { type: 'quickfolio:inline-edit', action: 'select' | 'select-section', ... }
+ * ---------------------------------------------------------------------- */
 
 const livePreviewContent = ref<Record<string, Record<string, any>> | null>(null);
 const livePreviewPortfolio = ref<Portfolio | null>(null);
@@ -163,79 +172,133 @@ const sectionForElement = (element: Element): string | null => {
     return null;
 };
 
-const highlightSelectedElement = (element: HTMLElement) => {
-    document.querySelectorAll<HTMLElement>('[data-quickfolio-selected]').forEach((selected) => {
-        delete selected.dataset.quickfolioSelected;
-        selected.style.outline = '';
-        selected.style.outlineOffset = '';
+type MatchedField = NonNullable<ReturnType<typeof findMatchingField>>;
+type CanvasTarget =
+    | { type: 'field'; field: MatchedField; element: HTMLElement | null }
+    | { type: 'section'; sectionKey: string }
+    | null;
+
+/**
+ * What would the editor edit if this element were clicked?
+ * One resolver serves both hover (to show what is clickable) and click (to select it),
+ * so what you see highlighted is always what you get.
+ */
+const resolveCanvasTarget = (target: Element): CanvasTarget => {
+    const image = target.closest('img');
+    if (image) {
+        const sectionKey = sectionForElement(image);
+        const field = findMatchingField(sectionKey, image.currentSrc || image.src, 'image');
+        if (field) return { type: 'field', field, element: image };
+        return sectionKey ? { type: 'section', sectionKey } : null;
+    }
+
+    let current: Element | null = target;
+    while (current && current !== document.body) {
+        const text = (current as HTMLElement).innerText?.trim();
+        if (text) {
+            const field = findMatchingField(sectionForElement(current), text, 'text');
+            if (field) {
+                return { type: 'field', field, element: target.closest<HTMLElement>('h1, h2, h3, h4, p, a, span, li, strong') };
+            }
+        }
+        current = current.parentElement;
+    }
+
+    const sectionKey = sectionForElement(target);
+    return sectionKey ? { type: 'section', sectionKey } : null;
+};
+
+const clearMarks = (attribute: 'quickfolioSelected' | 'quickfolioHover') => {
+    const name = attribute === 'quickfolioSelected' ? 'data-quickfolio-selected' : 'data-quickfolio-hover';
+    document.querySelectorAll<HTMLElement>(`[${name}]`).forEach((element) => {
+        delete element.dataset[attribute];
     });
+};
+
+const highlightSelectedElement = (element: HTMLElement) => {
+    clearMarks('quickfolioSelected');
+    clearMarks('quickfolioHover');
     element.dataset.quickfolioSelected = 'true';
-    element.style.outline = '2px solid #0f9d82';
-    element.style.outlineOffset = '3px';
 };
 
 const handleCanvasClick = (event: MouseEvent) => {
     if (!props.livePreview || !(event.target instanceof Element)) return;
 
-    const image = event.target.closest('img');
-    if (image) {
-        const field = findMatchingField(sectionForElement(image), image.currentSrc || image.src, 'image');
-        if (!field) {
-            const sectionKey = sectionForElement(image);
-            if (sectionKey) {
-                event.preventDefault();
-                event.stopPropagation();
-                sendInlineEdit({ action: 'select-section', sectionKey });
-            }
-            return;
-        }
+    const resolved = resolveCanvasTarget(event.target);
+
+    if (resolved?.type === 'field') {
         event.preventDefault();
         event.stopPropagation();
-        highlightSelectedElement(image);
-        image.style.cursor = 'pointer';
-        sendInlineEdit({ action: 'select', ...field });
+        sendInlineEdit({ action: 'select', ...resolved.field });
+        if (resolved.element) highlightSelectedElement(resolved.element);
         return;
     }
 
-    let current: Element | null = event.target;
-    let field: ReturnType<typeof findMatchingField> = null;
-    while (current && current !== document.body) {
-        const text = (current as HTMLElement).innerText?.trim();
-        if (text) {
-            field = findMatchingField(sectionForElement(current), text, 'text');
-            if (field) break;
-        }
-        current = current.parentElement;
-    }
-    if (!field) {
-        const sectionKey = sectionForElement(event.target);
-        if (!sectionKey) return;
+    if (resolved?.type === 'section') {
         event.preventDefault();
         event.stopPropagation();
-        sendInlineEdit({ action: 'select-section', sectionKey });
+        sendInlineEdit({ action: 'select-section', sectionKey: resolved.sectionKey });
         return;
     }
 
-    event.preventDefault();
-    event.stopPropagation();
-    sendInlineEdit({ action: 'select', ...field });
-    const selectedElement = event.target.closest<HTMLElement>('h1, h2, h3, h4, p, a, span, li, strong');
-    if (selectedElement) {
-        highlightSelectedElement(selectedElement);
-    }
+    // Nothing to edit here. Never let a stray link navigate the editor's preview away
+    // (in-page #anchors are fine: they only scroll).
+    const link = event.target.closest('a[href]');
+    if (link && !(link.getAttribute('href') ?? '').startsWith('#')) event.preventDefault();
+};
+
+// Showing real contact-form submissions from inside the editor would message the owner's actual form.
+const handleCanvasSubmit = (event: Event) => {
+    if (props.livePreview) event.preventDefault();
+};
+
+/* Hover cue: dashed outline on whatever a click would edit */
+let hoverFrame = 0;
+let hoverElement: HTMLElement | null = null;
+
+const clearHover = () => {
+    hoverElement = null;
+    clearMarks('quickfolioHover');
+};
+
+const handleCanvasHover = (event: MouseEvent) => {
+    if (!props.livePreview || !(event.target instanceof Element)) return;
+    const target = event.target;
+
+    window.cancelAnimationFrame(hoverFrame);
+    hoverFrame = window.requestAnimationFrame(() => {
+        const resolved = resolveCanvasTarget(target);
+        const element = resolved?.type === 'field' ? resolved.element : null;
+        if (element === hoverElement) return;
+
+        clearMarks('quickfolioHover');
+        hoverElement = element;
+        if (element && !element.dataset.quickfolioSelected) element.dataset.quickfolioHover = 'true';
+    });
 };
 
 onMounted(() => {
     if (props.livePreview) {
         window.addEventListener('message', handleLivePreviewMessage);
         document.addEventListener('click', handleCanvasClick, true);
+        document.addEventListener('submit', handleCanvasSubmit, true);
+        document.addEventListener('mouseover', handleCanvasHover, true);
+        document.documentElement.addEventListener('mouseleave', clearHover);
     }
 });
 
 onBeforeUnmount(() => {
     window.removeEventListener('message', handleLivePreviewMessage);
     document.removeEventListener('click', handleCanvasClick, true);
+    document.removeEventListener('submit', handleCanvasSubmit, true);
+    document.removeEventListener('mouseover', handleCanvasHover, true);
+    document.documentElement.removeEventListener('mouseleave', clearHover);
+    window.cancelAnimationFrame(hoverFrame);
 });
+
+/* -------------------------------------------------------------------------
+ * Content
+ * ---------------------------------------------------------------------- */
 
 const portfolioContent = computed(() => {
     if (livePreviewContent.value) return livePreviewContent.value;
@@ -257,54 +320,144 @@ const portfolioContent = computed(() => {
 
     return content;
 });
+
+// A template that isn't registered used to leave visitors on a blank page.
+const templateComponent = computed(() => getTemplateComponent(displayedPortfolio.value.template.slug));
+
+/* -------------------------------------------------------------------------
+ * What visitors, browsers and link previews see
+ * The owner's name, not the portfolio's internal title ("My Minimal Portfolio").
+ * ---------------------------------------------------------------------- */
+
+const ownerName = computed(() => displayedPortfolio.value.user?.name || props.portfolio.user?.name || props.portfolio.title);
+const pageTitle = computed(() => `${ownerName.value} — Portfolio`);
+
+const firstTextMatching = (sectionKeys: string[], pattern: RegExp, minLength: number) => {
+    for (const sectionKey of sectionKeys) {
+        const section = portfolioContent.value[sectionKey];
+        if (!isRecord(section)) continue;
+        for (const [key, value] of Object.entries(section)) {
+            if (pattern.test(key) && typeof value === 'string' && value.trim().length >= minLength) return value.trim();
+        }
+    }
+    return '';
+};
+
+const description = computed(() => {
+    const text = firstTextMatching(['about', 'header'], /(description|bio|summary|intro|tagline|subtitle)/i, 20).replace(/\s+/g, ' ');
+    if (!text) return `${ownerName.value}’s portfolio.`;
+    return text.length > 160 ? `${text.slice(0, 157).trimEnd()}…` : text;
+});
+
+const shareImage = computed(() => {
+    const image = firstTextMatching(['header', 'about'], /(image|photo|avatar|picture)/i, 4);
+    if (!/\.(png|jpe?g|webp|gif)(\?|$)/i.test(image)) return '';
+    if (/^https?:\/\//i.test(image)) return image;
+    return typeof window !== 'undefined' ? new URL(image, window.location.origin).href : '';
+});
+
+// Only a published, public page should be findable. Drafts, admin previews and the editor canvas should not.
+const noIndex = computed(() => Boolean(props.livePreview || props.adminPreview) || props.portfolio.status !== 'published');
 </script>
 
 <template>
-    <Head :title="`${portfolio.title} — Portfolio`" />
+    <Head :title="pageTitle">
+        <meta head-key="description" name="description" :content="description" />
+        <meta head-key="og:title" property="og:title" :content="pageTitle" />
+        <meta head-key="og:description" property="og:description" :content="description" />
+        <meta head-key="og:type" property="og:type" content="profile" />
+        <meta v-if="shareImage" head-key="og:image" property="og:image" :content="shareImage" />
+        <meta head-key="twitter:card" name="twitter:card" :content="shareImage ? 'summary_large_image' : 'summary'" />
+        <meta v-if="noIndex" head-key="robots" name="robots" content="noindex, nofollow" />
+    </Head>
 
     <div class="portfolio-page flex min-h-svh flex-col overflow-x-clip bg-background font-sans text-foreground selection:bg-primary selection:text-primary-foreground">
+        <a
+            href="#main-content"
+            class="sr-only rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[100]"
+        >
+            Skip to content
+        </a>
+
         <div
             v-if="adminPreview"
-            class="flex flex-wrap items-center justify-between gap-3 border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-950"
+            class="admin-banner flex flex-wrap items-center justify-between gap-3 border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-950"
+            role="status"
         >
-            <p>Admin preview of {{ adminPreview.userName }}'s {{ portfolio.status }} portfolio.</p>
+            <p>Admin preview of {{ adminPreview.userName }}’s {{ portfolio.status }} portfolio. It isn’t visible to the public unless it is published.</p>
             <Link :href="adminPreview.portfoliosUrl" class="font-semibold underline underline-offset-4"> Back to their portfolios </Link>
         </div>
 
-        <!-- Dynamic Template Rendering Based on Template Slug -->
-        <main class="portfolio-main min-w-0 flex-1">
-            <component
-                :is="getTemplateComponent(displayedPortfolio.template.slug)"
-                :content="portfolioContent"
-                :design-settings="displayedPortfolio.design_settings"
-                :portfolio="displayedPortfolio"
-            />
+        <main id="main-content" class="portfolio-main min-w-0 flex-1" tabindex="-1">
+            <template v-if="templateComponent">
+                <component
+                    :is="templateComponent"
+                    :content="portfolioContent"
+                    :design-settings="displayedPortfolio.design_settings"
+                    :portfolio="displayedPortfolio"
+                />
+                <AdditionalPortfolioFields :content="portfolioContent" />
+            </template>
+
+            <div v-else class="mx-auto flex max-w-md flex-col items-center px-6 py-24 text-center">
+                <span class="grid h-14 w-14 place-items-center rounded-2xl bg-muted text-muted-foreground">
+                    <LayoutTemplate class="h-6 w-6" aria-hidden="true" />
+                </span>
+                <h1 class="mt-5 text-lg font-bold">This portfolio can’t be shown right now</h1>
+                <p class="mt-2 text-sm leading-6 text-muted-foreground">Please try again later.</p>
+            </div>
         </main>
 
-        <footer class="portfolio-footer border-t border-slate-200/80 bg-white/90 px-5 py-5 text-slate-600 backdrop-blur dark:border-slate-800 dark:bg-slate-950/90 dark:text-slate-300 sm:px-8 sm:py-6">
-            <div class="portfolio-footer-inner mx-auto flex w-full max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div class="flex min-w-0 items-center gap-3">
-                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-                        <img src="/logo.svg" alt="" class="h-6 w-6 object-contain" />
+        <!-- Not part of the owner's content, so it stays out of the editor canvas -->
+        <footer
+            v-if="!livePreview"
+            class="portfolio-footer border-t border-slate-200/80 bg-white/90 px-5 py-4 text-slate-600 backdrop-blur dark:border-slate-800 dark:bg-slate-950/90 dark:text-slate-300 sm:px-8"
+        >
+            <div class="portfolio-footer-inner mx-auto flex w-full max-w-7xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p class="flex min-w-0 items-center gap-2.5 text-sm">
+                    <img src="/logo.svg" alt="" class="h-5 w-5 shrink-0 object-contain" />
+                    <span class="truncate">
+                        <span class="font-semibold text-slate-900 dark:text-slate-100">{{ ownerName }}</span>
+                        <span class="text-slate-500 dark:text-slate-400"> · made with quickFolio</span>
                     </span>
-                    <div class="min-w-0">
-                        <p class="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{{ portfolio.title }}</p>
-                        <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Portfolio powered by quickFolio</p>
-                    </div>
-                </div>
-                <Link
+                </p>
+                <a
                     :href="route('home')"
-                    class="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-primary/40 hover:text-primary dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:text-primary"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-3 text-sm font-semibold text-slate-700 transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:text-slate-200 dark:hover:text-primary"
                 >
-                    Create your portfolio
-                    <span aria-hidden="true">↗</span>
-                </Link>
+                    Make your own portfolio
+                    <ArrowUpRight class="h-4 w-4" aria-hidden="true" />
+                    <span class="sr-only">(opens in a new tab)</span>
+                </a>
             </div>
         </footer>
     </div>
 </template>
 
 <style scoped>
+/* Editor canvas: what a click would edit, and what is selected. */
+:global([data-quickfolio-hover]) {
+    outline: 2px dashed rgb(15 157 130 / 0.55);
+    outline-offset: 3px;
+    cursor: pointer;
+}
+
+:global([data-quickfolio-selected]) {
+    outline: 2px solid #0f9d82 !important;
+    outline-offset: 3px;
+    cursor: pointer;
+}
+
+/* People print and save portfolios as PDFs: leave out everything that isn't theirs. */
+@media print {
+    .admin-banner,
+    .portfolio-footer {
+        display: none !important;
+    }
+}
+
 @media (max-width: 640px) {
     .portfolio-page {
         width: 100%;

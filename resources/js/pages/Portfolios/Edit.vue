@@ -148,9 +148,12 @@ const props = defineProps<{
     portfolio: Portfolio;
     availableTemplates: { id: number; name: string; slug: string; category?: { name: string } }[];
     fieldDefinitions: FieldDefinition[];
+    showCreationNotice: boolean;
 }>();
 
 const page = usePage<{ auth: { user: { role: string } } }>();
+const isCreationNoticeDismissed = ref(false);
+const showCreationNotice = computed(() => props.showCreationNotice && !isCreationNoticeDismissed.value);
 
 const fieldGuidance: Record<string, { description: string; example?: string }> = {
     logo_text: { description: 'The short brand name shown in your navigation bar.', example: 'Alex Morgan' },
@@ -160,9 +163,14 @@ const fieldGuidance: Record<string, { description: string; example?: string }> =
     hero_greeting: { description: 'A short greeting displayed above your name.', example: 'Hello, I am' },
     hero_name: { description: 'Your name, usually the largest text in the opening section.', example: 'Alex Morgan' },
     hero_role: { description: 'Your profession or the kind of work you do.', example: 'Product designer' },
+    hero_tagline: { description: 'A short creative statement that captures your style or point of view.', example: 'Stories told through light and motion' },
     hero_description: { description: 'A brief introduction visitors see near your name and role.', example: 'I design simple, useful digital products.' },
     hero_image: { description: 'Your portrait or profile image in the opening section.' },
     hero_background_image: { description: 'A background image behind the opening section, if this template supports one.' },
+    hero_background_video_url: { description: 'A video URL for an opening background when the template supports video.', example: 'https://example.com/showreel.mp4' },
+    hero_location: { description: 'Your home base or the area where you are available for work.', example: 'Brooklyn, New York' },
+    hero_availability: { description: 'A short note about current bookings or availability.', example: 'Available for select projects' },
+    hero_years_experience: { description: 'How long you have worked in your field.', example: '8 years' },
     hero_cta_primary_text: { description: 'The label on the main action button near your introduction.', example: 'View my work' },
     hero_cta_primary_url: { description: 'Where the main action button takes visitors. Use a URL or section link.', example: '#projects' },
     hero_cta_secondary_text: { description: 'An optional label for a second action button.', example: 'Contact me' },
@@ -171,11 +179,16 @@ const fieldGuidance: Record<string, { description: string; example?: string }> =
     about_title: { description: 'The heading for the section where you tell visitors about yourself.', example: 'A little about me' },
     about_subtitle: { description: 'A short supporting line below your About heading.' },
     about_description: { description: 'Your background, approach, or what you care about in your work.' },
+    about_philosophy: { description: 'The ideas or creative approach that guide your work.' },
     about_image: { description: 'An optional image displayed alongside your About content.' },
     about_highlights: { description: 'Short facts or achievements displayed as highlights.', example: '5+ years of experience' },
+    about_specialties: { description: 'Add the types of creative work or subjects you specialize in.' },
+    about_equipment: { description: 'List camera gear, lenses, lighting, or production equipment you use.' },
+    about_clients: { description: 'Add clients, publications, or brands you have worked with.' },
     about_cv_file: { description: 'A downloadable CV or resume visitors can open from your portfolio.' },
     about_cta_text: { description: 'The label on an optional action button in the About section.', example: 'Download my resume' },
     about_cta_url: { description: 'The destination for the About section action button.' },
+    about_booking_url: { description: 'A link where visitors can check availability or book a session.' },
     journey_title: { description: 'The heading above your work or education history.', example: 'My experience' },
     journey_subtitle: { description: 'A short introduction to your professional journey.' },
     journey_list: { description: 'Add one entry for each role, study period, or career milestone.' },
@@ -187,20 +200,32 @@ const fieldGuidance: Record<string, { description: string; example?: string }> =
     skills_show_icon: { description: 'Show icons next to skills when the template supports them.' },
     projects_title: { description: 'The heading above your selected work.', example: 'Featured projects' },
     projects_subtitle: { description: 'A short introduction to the projects visitors will see.' },
-    projects_description: { description: 'Optional context shown before your project list.' },
-    projects_list: { description: 'Add one entry for each project card shown in your portfolio.' },
+    projects_description: { description: 'Optional section-wide introduction. Add each project’s own description inside its project entry.' },
+    projects_list: { description: 'Add each project here. Select a project to edit its own description, media, client, and production details.' },
     projects_show_featured: { description: 'Show a featured label on projects you mark as featured.' },
+    projects_show_categories: { description: 'Show project categories when the template supports them.' },
+    projects_filter_enabled: { description: 'Let visitors filter projects by category when the template supports filters.' },
+    projects_gallery_layout: { description: 'Choose or describe the gallery layout used by templates that support this setting.', example: 'Masonry' },
+    projects_reel_url: { description: 'Link to a showreel or demo video for your creative work.' },
+    projects_booking_url: { description: 'Link visitors to inquire about a project or book a service.' },
     contact_title: { description: 'The heading inviting visitors to get in touch.', example: 'Let’s work together' },
     contact_subtitle: { description: 'A short supporting line under the contact heading.' },
     contact_description: { description: 'Tell visitors what they can contact you about.' },
     contact_email: { description: 'The email address visitors can use to contact you.', example: 'hello@example.com' },
     contact_phone: { description: 'An optional phone number you are comfortable sharing publicly.' },
     contact_location: { description: 'Your city or region, if you want to share it.', example: 'Toronto, Canada' },
+    contact_business_name: { description: 'The name of your photography, video, or creative studio.' },
+    contact_whatsapp: { description: 'A WhatsApp phone number or click-to-chat link.' },
+    contact_business_hours: { description: 'When clients can usually reach your studio.', example: 'Monday–Friday, 9am–5pm' },
+    contact_response_time: { description: 'Set expectations for how quickly you usually reply.', example: 'Replies within two business days' },
+    contact_booking_url: { description: 'A link to your booking calendar or consultation form.' },
     contact_form_enabled: { description: 'Show the contact form area when the template supports it.' },
     contact_social_links: { description: 'Add links visitors can use to find you on other platforms.' },
     services_title: { description: 'The heading above the services you offer.', example: 'How I can help' },
     services_subtitle: { description: 'A short introduction to your services.' },
     services_list: { description: 'Add one entry for each service you offer.' },
+    services_booking_url: { description: 'A link where visitors can book or ask about your services.' },
+    services_show_pricing: { description: 'Show service prices when the template supports pricing.' },
 };
 
 const guidanceForField = (field: FieldDefinition) =>
@@ -234,7 +259,7 @@ const sortSections = <T extends { section_key: string }>(sections: T[]): T[] =>
     [...sections].sort((a, b) => sectionRank(a.section_key) - sectionRank(b.section_key));
 
 /**
- * Every field definition (all 48) belongs to exactly one editor section,
+ * Every field definition belongs to exactly one editor section,
  * determined from its field_key. This makes the editor show ALL fields of a
  * section even when the template does not list them.
  */
@@ -251,7 +276,8 @@ const sectionGroupFor = (sectionKey: string) => ({ header: 'hero', nav: 'navbar'
 /**
  * Fields shown for a section: the template's configured fields (keeping their
  * is_required flag) plus every remaining field definition of that section.
- * Sorted by field definition id, so the order matches the database.
+ * Sorted by field definition id, except the project list is kept before its
+ * optional section-wide introduction.
  */
 const fieldsForSection = (sectionKey: string) => {
     const templateSection = props.portfolio.template.sections.find((ts) => ts.section_key === sectionKey);
@@ -264,14 +290,34 @@ const fieldsForSection = (sectionKey: string) => {
         )
         .map((fd) => ({ is_required: false, is_visible: true, field_definition: fd }));
 
-    return [...configured, ...extra]
-        .sort((a, b) => a.field_definition.id - b.field_definition.id);
+    const fields = [...configured, ...extra];
+    if (sectionGroupFor(sectionKey) === 'projects') {
+        const projectFieldOrder = ['projects_title', 'projects_subtitle', 'projects_list', 'projects_description'];
+        fields.sort((a, b) => {
+            const aRank = projectFieldOrder.indexOf(a.field_definition.field_key);
+            const bRank = projectFieldOrder.indexOf(b.field_definition.field_key);
+            if (aRank !== -1 || bRank !== -1) {
+                return (aRank === -1 ? projectFieldOrder.length : aRank) -
+                    (bRank === -1 ? projectFieldOrder.length : bRank);
+            }
+            return a.field_definition.id - b.field_definition.id;
+        });
+        return fields;
+    }
+
+    return fields.sort((a, b) => a.field_definition.id - b.field_definition.id);
 };
 
 const socialPlatforms = [
     { value: 'github', label: 'GitHub' },
     { value: 'linkedin', label: 'LinkedIn' },
     { value: 'instagram', label: 'Instagram' },
+    { value: 'tiktok', label: 'TikTok' },
+    { value: 'vimeo', label: 'Vimeo' },
+    { value: 'pinterest', label: 'Pinterest' },
+    { value: 'flickr', label: 'Flickr' },
+    { value: '500px', label: '500px' },
+    { value: 'threads', label: 'Threads' },
     { value: 'x', label: 'X' },
     { value: 'facebook', label: 'Facebook' },
     { value: 'youtube', label: 'YouTube' },
@@ -294,13 +340,31 @@ const defaultArrayItem = (fieldKey: string) => {
         case 'journey_list':
             return { period: '', title: 'New role', company: '', description: '' };
         case 'projects_list':
-            return { title: 'New project', category: 'Website Design', description: '', image: '', url: '', featured: false };
+            return {
+                title: 'New project',
+                category: '',
+                description: '',
+                client: '',
+                role: '',
+                year: '',
+                location: '',
+                medium: '',
+                camera: '',
+                lens: '',
+                software: '',
+                image: '',
+                image_alt: '',
+                video_url: '',
+                url: '',
+                credit: '',
+                featured: false,
+            };
         case 'hero_social_links':
             return { platform: 'github', url: '' };
         case 'about_highlights':
             return 'New highlight';
         case 'services_list':
-            return { icon: '', title: 'New service', description: '', url: '' };
+            return { icon: '', title: 'New service', description: '', price: '', url: '' };
         case 'nav_links':
         case 'contact_social_links':
             return { label: '', url: '' };
@@ -599,18 +663,6 @@ const valueAtPath = (value: unknown, path: (string | number)[]) => {
     return current;
 };
 
-const setValueAtPath = (value: unknown, path: (string | number)[], nextValue: unknown) => {
-    if (path.length === 0) return nextValue;
-
-    let current: any = value;
-    for (const key of path.slice(0, -1)) {
-        if (current === null || current === undefined) return value;
-        current = current[key];
-    }
-    if (current !== null && current !== undefined) current[path[path.length - 1]] = nextValue;
-    return value;
-};
-
 /* -------------------------------------------------------------------------
  * Selection & focus
  * ---------------------------------------------------------------------- */
@@ -652,6 +704,15 @@ const selectSection = (sectionKey: string) => {
     inlineEditTarget.value = null;
     isContactSettingsSelected.value = false;
     selectedCanvasSectionKey.value = sectionKey;
+};
+
+const startWithIntro = () => {
+    const section = form.sections.find((item: FormSection) => item.section_key === 'header')
+        ?? form.sections[0];
+    if (!section) return;
+
+    selectSection(section.section_key);
+    isCreationNoticeDismissed.value = true;
 };
 
 const selectContactSettings = () => {
@@ -763,15 +824,27 @@ const selectedArrayItemFields = computed<RepeatableItemField[]>(() => {
         ],
         projects_list: [
             { key: 'title', label: 'Project name', type: 'text', placeholder: 'e.g. Portfolio website' },
-            { key: 'category', label: 'Category', type: 'text', placeholder: 'e.g. Web app' },
-            { key: 'description', label: 'Description', type: 'textarea', placeholder: 'Describe the project' },
+            { key: 'description', label: 'Project description', type: 'textarea', placeholder: 'Describe this project, shoot, or video' },
+            { key: 'category', label: 'Category / genre', type: 'text', placeholder: 'e.g. Wedding, documentary, product' },
+            { key: 'client', label: 'Client / publication', type: 'text', placeholder: 'e.g. Acme Studio' },
+            { key: 'role', label: 'Role / contribution', type: 'text', placeholder: 'e.g. Director, editor, photographer' },
+            { key: 'year', label: 'Year', type: 'text', placeholder: 'e.g. 2025' },
+            { key: 'location', label: 'Location', type: 'text', placeholder: 'e.g. Kyoto, Japan' },
+            { key: 'medium', label: 'Format / medium', type: 'text', placeholder: 'e.g. Short film, portrait series' },
+            { key: 'camera', label: 'Camera / equipment', type: 'text', placeholder: 'e.g. Sony FX3' },
+            { key: 'lens', label: 'Lens', type: 'text', placeholder: 'e.g. 35mm f/1.4' },
+            { key: 'software', label: 'Editing software', type: 'text', placeholder: 'e.g. Premiere Pro, DaVinci Resolve' },
             { key: 'url', label: 'Project URL', type: 'text', placeholder: 'https://' },
+            { key: 'video_url', label: 'Video / showreel URL', type: 'text', placeholder: 'https://…' },
             { key: 'image', label: 'Project image', type: 'image' },
+            { key: 'image_alt', label: 'Image description', type: 'text', placeholder: 'Describe the project image' },
+            { key: 'credit', label: 'Credits', type: 'text', placeholder: 'e.g. With Alex Morgan, music by…' },
             { key: 'featured', label: 'Featured project', type: 'boolean' },
         ],
         services_list: [
             { key: 'title', label: 'Service name', type: 'text', placeholder: 'e.g. Web development' },
             { key: 'description', label: 'Description', type: 'textarea', placeholder: 'Describe this service' },
+            { key: 'price', label: 'Price (optional)', type: 'text', placeholder: 'e.g. From $500' },
             { key: 'icon', label: 'Icon (optional)', type: 'text', placeholder: 'Icon name' },
             { key: 'url', label: 'Service URL (optional)', type: 'text', placeholder: 'https://' },
         ],
@@ -984,27 +1057,6 @@ const moveSectionArrayItem = (field: FieldDefinition, index: number, direction: 
     const next = index + direction;
     if (!Array.isArray(items) || next < 0 || next >= items.length) return;
     [items[index], items[next]] = [items[next], items[index]];
-};
-
-const addSelectedArrayItem = () => {
-    const target = inlineEditTarget.value;
-    if (!target || !canEditSelectedArray.value) return;
-
-    const fieldValue = findFormFieldValue(target.sectionKey, target.fieldDefinitionId);
-    if (!fieldValue) return;
-    if (!Array.isArray(fieldValue.value)) fieldValue.value = [];
-    fieldValue.value.push(defaultArrayItem(target.fieldKey));
-
-    const firstKey = target.fieldKey === 'skills_list'
-        ? 'label'
-        : ['projects_list', 'journey_list', 'services_list'].includes(target.fieldKey)
-            ? 'title'
-            : null;
-    inlineEditTarget.value = {
-        ...target,
-        path: [fieldValue.value.length - 1, ...(firstKey ? [firstKey] : [])],
-    };
-    focusInInspector(`#item-field-${firstKey ?? 'value'}`);
 };
 
 const removeSelectedArrayItem = () => {
@@ -1489,6 +1541,9 @@ const togglePublish = (isUndo = false) => {
                 showToast(isUndo ? 'Portfolio is live again' : 'Your portfolio is live');
             }
         },
+        onError: () => {
+            isChecklistOpen.value = true;
+        },
     });
 };
 
@@ -1818,6 +1873,34 @@ sectionGuidance.hero = sectionGuidance.header;
                     @click="dismissErrors"
                 >
                     <X class="h-4 w-4" />
+                </button>
+            </div>
+
+            <div
+                v-if="showCreationNotice"
+                class="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-[#BFD4CE] bg-[#F0F7F5] p-3 text-sm text-[#334155] dark:border-teal-900 dark:bg-teal-950/30 dark:text-slate-200"
+                role="status"
+            >
+                <div class="min-w-0 flex-1">
+                    <p class="font-semibold text-[#00695C] dark:text-teal-300">Your private draft is ready</p>
+                    <p class="mt-1 leading-5">
+                        It starts with sample content. Review each section and replace the example details before publishing.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    class="inline-flex min-h-9 items-center rounded-lg px-3 font-semibold text-[#00695C] hover:bg-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00695C]/50 dark:text-teal-300 dark:hover:bg-white/5"
+                    @click="startWithIntro"
+                >
+                    Start with your intro
+                </button>
+                <button
+                    type="button"
+                    class="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-[#64748B] hover:bg-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00695C]/50 dark:text-slate-400 dark:hover:bg-white/5"
+                    aria-label="Dismiss draft guidance"
+                    @click="isCreationNoticeDismissed = true"
+                >
+                    <X class="h-4 w-4" aria-hidden="true" />
                 </button>
             </div>
 
@@ -2537,11 +2620,25 @@ sectionGuidance.hero = sectionGuidance.header;
         <Dialog v-model:open="isChecklistOpen">
             <DialogContent class="max-h-[90dvh] w-[calc(100%-1rem)] max-w-md overflow-y-auto rounded-2xl border-[#E1E8E7] bg-white p-0 dark:border-slate-800 dark:bg-slate-900 sm:w-[calc(100%-2rem)]">
                 <DialogHeader class="border-b border-[#EDF1F0] px-5 py-5 text-left dark:border-slate-800">
-                    <DialogTitle class="text-lg font-bold">Almost ready to publish</DialogTitle>
+                    <DialogTitle class="text-lg font-bold">
+                        {{ requiredIssues.length ? 'Almost ready to publish' : 'Couldn’t publish yet' }}
+                    </DialogTitle>
                     <DialogDescription :class="[ui.hint, 'mt-1 text-sm leading-5']">
-                        Add {{ requiredIssues.length === 1 ? 'this detail' : 'these details' }} first. Choose one to jump straight to it.
+                        <template v-if="requiredIssues.length">
+                            Add {{ requiredIssues.length === 1 ? 'this detail' : 'these details' }} first. Choose one to jump straight to it.
+                        </template>
+                        <template v-else>
+                            Review the message below, then make the suggested changes and try again.
+                        </template>
                     </DialogDescription>
                 </DialogHeader>
+                <p
+                    v-if="publishForm.errors.publish"
+                    class="mx-4 mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm leading-5 text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300"
+                    role="alert"
+                >
+                    {{ publishForm.errors.publish }}
+                </p>
                 <ul class="p-2">
                     <li v-for="issue in requiredIssues" :key="`${issue.sectionKey}-${issue.field.id}`">
                         <button

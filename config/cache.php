@@ -2,6 +2,11 @@
 
 use Illuminate\Support\Str;
 
+$databaseConnection = env('DB_CONNECTION', env('DATABASE_URL') ? 'pgsql' : 'sqlite');
+$databaseCacheConnection = $databaseConnection === 'pgsql' && env('DATABASE_URL_UNPOOLED')
+    ? 'pgsql_unpooled'
+    : null;
+
 return [
 
     /*
@@ -40,7 +45,8 @@ return [
 
         'database' => [
             'driver' => 'database',
-            'connection' => env('DB_CACHE_CONNECTION'),
+            // Database rate limiting uses row locks, so prefer Neon's direct endpoint when available.
+            'connection' => env('DB_CACHE_CONNECTION', $databaseCacheConnection),
             'table' => env('DB_CACHE_TABLE', 'cache'),
             'lock_connection' => env('DB_CACHE_LOCK_CONNECTION'),
             'lock_table' => env('DB_CACHE_LOCK_TABLE'),

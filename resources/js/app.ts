@@ -1,12 +1,13 @@
 import '../css/app.css';
 
-import { createInertiaApp } from '@inertiajs/vue3';
+import { createInertiaApp, router } from '@inertiajs/vue3';
+import axios from 'axios';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import type { DefineComponent } from 'vue';
-import { createApp, h } from 'vue';
+import { createApp, Fragment, h, ref } from 'vue';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
+import GlobalLoadingOverlay from './components/GlobalLoadingOverlay.vue';
 import { initializeTheme } from './composables/useAppearance';
-import axios from 'axios';
 
 window.axios = axios;
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
@@ -25,12 +26,27 @@ declare module 'vite/client' {
 }
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const isNavigating = ref(false);
+
+router.on('start', () => {
+    isNavigating.value = true;
+});
+
+router.on('finish', () => {
+    isNavigating.value = false;
+});
 
 createInertiaApp({
     title: (title) => `${title} - ${appName}`,
     resolve: (name) => resolvePageComponent(`./pages/${name}.vue`, import.meta.glob<DefineComponent>('./pages/**/*.vue')),
     setup({ el, App, props, plugin }) {
-        createApp({ render: () => h(App, props) })
+        createApp({
+            render: () =>
+                h(Fragment, null, [
+                    h('div', { class: 'contents', inert: isNavigating.value, 'aria-busy': isNavigating.value }, [h(App, props)]),
+                    h(GlobalLoadingOverlay, { active: isNavigating.value }),
+                ]),
+        })
             .use(plugin)
             .use(ZiggyVue)
             .mount(el);
