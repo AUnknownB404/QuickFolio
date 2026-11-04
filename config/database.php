@@ -2,14 +2,7 @@
 
 use Illuminate\Support\Str;
 
-$pgsqlUrl = env('DB_URL', env('DATABASE_URL', env('DATABASE_URL_UNPOOLED')));
-$pgsqlHost = is_string($pgsqlUrl) ? parse_url($pgsqlUrl, PHP_URL_HOST) : null;
 $pgsqlEndpointId = env('NEON_ENDPOINT_ID');
-
-if (! $pgsqlEndpointId && is_string($pgsqlHost) && str_ends_with($pgsqlHost, '.neon.tech')) {
-    $pgsqlEndpointId = explode('.', $pgsqlHost)[0];
-    $pgsqlEndpointId = preg_replace('/-pooler$/', '', $pgsqlEndpointId);
-}
 
 $pgsqlConnection = [
     'driver' => 'pgsql',
