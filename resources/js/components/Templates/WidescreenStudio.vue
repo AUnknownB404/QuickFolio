@@ -721,6 +721,7 @@ const year = new Date().getFullYear();
                                 playsinline
                                 loop
                                 muted
+                                preload="none"
                             />
                             <img
                                 v-else-if="media('header', 'hero_image')"
@@ -800,7 +801,7 @@ const year = new Date().getFullYear();
             <div class="mx-auto grid w-full max-w-[1320px] items-center gap-14 px-5 py-28 sm:px-8 lg:grid-cols-12 lg:gap-16">
                 <div v-if="media('about', 'about_image')" data-reveal class="lg:col-span-5">
                     <div class="ws-frame mx-auto max-w-md">
-                        <img :src="media('about', 'about_image')" :alt="text('about', 'about_title') ?? ''" class="aspect-[4/5] w-full object-cover" loading="lazy" />
+                        <img :src="media('about', 'about_image')" :alt="text('about', 'about_title') ?? ''" class="aspect-[4/5] w-full object-cover" loading="lazy" decoding="async" />
                         <span class="ws-corner ws-corner-tl" aria-hidden="true" />
                         <span class="ws-corner ws-corner-br" aria-hidden="true" />
                     </div>
@@ -962,7 +963,7 @@ const year = new Date().getFullYear();
                                     playsinline
                                     preload="metadata"
                                 />
-                                <img v-else-if="p.image" :src="p.image" :alt="p.title" class="ws-thumb-media" loading="lazy" />
+                                <img v-else-if="p.image" :src="p.image" :alt="p.title" class="ws-thumb-media" loading="lazy" decoding="async" />
                                 <div v-else class="ws-display ws-thumb-media ws-tone flex items-center justify-center text-8xl" :class="`ws-tone-${i % 3}`">
                                     {{ p.title.charAt(0).toUpperCase() }}
                                 </div>
@@ -1048,9 +1049,9 @@ const year = new Date().getFullYear();
 
                             <div class="ws-compare" :class="{ 'is-static': !activeSvc.compare }">
                                 <template v-if="activeSvc.compare">
-                                    <img :src="activeSvc.after" alt="" class="ws-compare-img" />
+                                    <img :src="activeSvc.after" alt="" class="ws-compare-img" loading="lazy" decoding="async" />
                                     <div class="ws-compare-before" :style="{ clipPath: `inset(0 ${100 - compare}% 0 0)` }">
-                                        <img :src="activeSvc.before" alt="" class="ws-compare-img ws-before-filter" />
+                                        <img :src="activeSvc.before" alt="" class="ws-compare-img ws-before-filter" loading="lazy" decoding="async" />
                                     </div>
                                     <span class="ws-compare-handle" :style="{ left: `${compare}%` }" aria-hidden="true"><Maximize2 class="h-4 w-4 rotate-45" /></span>
                                     <input
@@ -1065,7 +1066,7 @@ const year = new Date().getFullYear();
                                     />
                                 </template>
                                 <template v-else>
-                                    <img v-if="activeSvc.after" :src="activeSvc.after" alt="" class="ws-compare-img" />
+                                    <img v-if="activeSvc.after" :src="activeSvc.after" alt="" class="ws-compare-img" loading="lazy" decoding="async" />
                                     <div v-else class="ws-compare-fallback" aria-hidden="true">
                                         <span class="ws-wave ws-wave-lg"><i /><i /><i /><i /><i /><i /><i /><i /><i /></span>
                                     </div>

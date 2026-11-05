@@ -353,7 +353,7 @@ onBeforeUnmount(() => {
                     <div class="relative">
                         <div class="absolute -inset-4 rounded-[2.5rem] bg-gradient-to-br from-[#00A388] to-[#9BF0D2] opacity-30 rotate-3 blur-[2px]"></div>
                         <div class="relative w-72 h-[420px] sm:w-[360px] sm:h-[480px] rounded-[2rem] bg-[#0B3B33] border border-white/10 overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.45)] group">
-                            <img :src="resolvePortfolioMediaUrl(about.about_image)" :alt="about.about_title" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                            <img :src="resolvePortfolioMediaUrl(about.about_image)" :alt="about.about_title" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy" decoding="async" />
                         </div>
                     </div>
                 </div>
@@ -509,7 +509,7 @@ onBeforeUnmount(() => {
                         class="project-card rounded-3xl bg-white/[0.05] border border-white/10 backdrop-blur overflow-hidden group flex flex-col"
                     >
                         <div class="h-64 bg-gradient-to-br from-[#0B4A40] to-[#06352D] relative overflow-hidden flex items-center justify-center">
-                            <img v-if="proj.image" :src="resolvePortfolioMediaUrl(proj.image)" :alt="proj.title" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                            <img v-if="proj.image" :src="resolvePortfolioMediaUrl(proj.image)" :alt="proj.title" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy" decoding="async" />
                             <span v-else class="text-5xl transition-transform duration-500 group-hover:scale-125 group-hover:rotate-6">📂</span>
                             <div v-if="proj.url" class="absolute inset-0 bg-gradient-to-t from-[#04201A]/90 via-[#04201A]/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end justify-start p-5">
                                 <a :href="proj.url" target="_blank" rel="noopener" class="translate-y-3 group-hover:translate-y-0 transition-transform duration-500 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#5CF0BD] text-[#04201A] font-semibold text-sm shadow-lg" aria-label="View Project">

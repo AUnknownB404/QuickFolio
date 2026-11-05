@@ -313,6 +313,7 @@ const createPortfolio = () => {
                                 alt=""
                                 loading="lazy"
                                 class="h-full w-full object-cover transition duration-500 motion-safe:group-hover:scale-[1.03]"
+                                decoding="async"
                             />
                             <div v-else class="flex h-full items-center justify-center">
                                 <span class="grid h-14 w-14 place-items-center rounded-2xl border border-[#CFE0DB] bg-white text-[#00695C] shadow-sm dark:border-slate-600 dark:bg-slate-900">
@@ -407,7 +408,7 @@ const createPortfolio = () => {
                 <DialogHeader class="text-left">
                     <div class="mb-1 flex items-center gap-3">
                         <div class="h-14 w-20 shrink-0 overflow-hidden rounded-lg border border-[#E2E8E8] bg-[#E8EEEE] dark:border-slate-700 dark:bg-slate-800">
-                            <img v-if="selectedTemplate?.thumbnail" :src="selectedTemplate.thumbnail" alt="" class="h-full w-full object-cover" />
+                            <img v-if="selectedTemplate?.thumbnail" :src="selectedTemplate.thumbnail" alt="" class="h-full w-full object-cover" loading="lazy" decoding="async" />
                             <div v-else class="grid h-full place-items-center text-[#00695C]"><LayoutTemplate class="h-5 w-5" /></div>
                         </div>
                         <div class="min-w-0">

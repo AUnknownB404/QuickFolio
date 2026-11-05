@@ -787,7 +787,7 @@ const year = new Date().getFullYear();
                         </div>
 
                         <div v-if="media('about', 'about_image')" data-reveal class="ak-card mx-auto w-full max-w-sm rounded-3xl p-3 shadow-md">
-                            <img :src="media('about', 'about_image')" :alt="heroName ?? text('about', 'about_title') ?? ''" loading="lazy" class="aspect-[4/5] w-full rounded-2xl object-cover" />
+                            <img :src="media('about', 'about_image')" :alt="heroName ?? text('about', 'about_title') ?? ''" loading="lazy" class="aspect-[4/5] w-full rounded-2xl object-cover" decoding="async" />
                             <p v-if="heroName" class="ak-display mb-1 mt-4 text-center text-2xl italic">{{ heroName }}</p>
                         </div>
                     </div>
@@ -821,7 +821,7 @@ const year = new Date().getFullYear();
                                 <div class="mb-2 flex items-center justify-between gap-3 text-sm">
                                     <span class="flex items-center gap-2">
                                         <template v-if="flag('skills', 'skills_show_icon', true)">
-                                            <img v-if="isUrl(s.icon)" :src="s.icon" alt="" class="h-4 w-4" />
+                                            <img v-if="isUrl(s.icon)" :src="s.icon" alt="" class="h-4 w-4" loading="lazy" decoding="async" />
                                             <component :is="iconFor(s.icon)" v-else-if="iconFor(s.icon)" class="h-4 w-4" />
                                             <span v-else-if="isGlyph(s.icon)" aria-hidden="true">{{ s.icon }}</span>
                                         </template>
@@ -843,7 +843,7 @@ const year = new Date().getFullYear();
                             <ul v-for="n in 2" :key="n" :aria-hidden="n === 2 ? 'true' : undefined" class="ak-muted flex items-center gap-12 whitespace-nowrap px-6 text-sm">
                                 <li v-for="(s, i) in skills" :key="i" class="flex items-center gap-2">
                                     <template v-if="flag('skills', 'skills_show_icon', true)">
-                                        <img v-if="isUrl(s.icon)" :src="s.icon" alt="" class="h-7 w-7" />
+                                        <img v-if="isUrl(s.icon)" :src="s.icon" alt="" class="h-7 w-7" loading="lazy" decoding="async" />
                                         <component :is="iconFor(s.icon)" v-else-if="iconFor(s.icon)" class="h-6 w-6" />
                                         <span v-else-if="isGlyph(s.icon)" class="text-xl leading-none" aria-hidden="true">{{ s.icon }}</span>
                                     </template>
@@ -915,7 +915,7 @@ const year = new Date().getFullYear();
                             </div>
 
                             <div v-if="openRow === i" class="ak-open mt-6 grid grid-cols-1 items-center gap-8" :class="p.image ? 'md:grid-cols-2' : ''">
-                                <img v-if="p.image" :src="p.image" :alt="p.title" loading="lazy" class="aspect-[16/10] w-full rounded-2xl object-cover" />
+                                <img v-if="p.image" :src="p.image" :alt="p.title" loading="lazy" class="aspect-[16/10] w-full rounded-2xl object-cover" decoding="async" />
                                 <div>
                                     <span v-if="(featureFirst && i === 0) || p.category" class="text-xs">{{ [featureFirst && i === 0 ? 'Featured' : '', p.category].filter(Boolean).join(' · ') }}</span>
                                     <h3 class="ak-display my-2 text-3xl font-black">{{ p.title }}</h3>
@@ -1015,7 +1015,7 @@ const year = new Date().getFullYear();
                             </div>
                         </div>
                         <div v-if="caseProject.image" class="ak-card rounded-3xl p-3">
-                            <img :src="caseProject.image" :alt="`${caseProject.title} screenshot`" class="aspect-[16/10] w-full rounded-xl object-cover" />
+                            <img :src="caseProject.image" :alt="`${caseProject.title} screenshot`" class="aspect-[16/10] w-full rounded-xl object-cover" loading="lazy" decoding="async" />
                         </div>
                     </section>
 
@@ -1045,7 +1045,7 @@ const year = new Date().getFullYear();
                         <h2 class="ak-display mb-5 text-3xl font-semibold">Project Preview</h2>
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <figure class="m-0 overflow-hidden rounded-2xl border border-[var(--line)]">
-                                <img :src="caseProject.image" :alt="`${caseProject.title} project screenshot`" class="w-full" />
+                                <img :src="caseProject.image" :alt="`${caseProject.title} project screenshot`" class="w-full" loading="lazy" decoding="async" />
                                 <figcaption class="ak-muted p-2 text-xs">{{ caseProject.title }}</figcaption>
                             </figure>
                         </div>

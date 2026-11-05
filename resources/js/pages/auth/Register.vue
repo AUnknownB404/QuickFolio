@@ -2,7 +2,7 @@
 import AppLogo from '@/components/AppLogo.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed, nextTick, onMounted, ref } from 'vue';
-import { AlertCircle, ArrowRight, Check, Eye, EyeOff, LoaderCircle, Lock, Mail, User } from 'lucide-vue-next';
+import { AlertCircle, ArrowRight, Check, Circle, Eye, EyeOff, LoaderCircle, Lock, Mail, User, X } from 'lucide-vue-next';
 
 defineProps({
     // Opt-in: show "Continue with Google" here too, matching the login page.
@@ -33,6 +33,13 @@ onMounted(() => {
 const fieldOrder = ['name', 'email', 'password', 'password_confirmation', 'terms'] as const;
 
 const submit = () => {
+    if (!passwordValid.value) {
+        // Don't spend a round trip on something we already know will be rejected.
+        attemptedSubmit.value = true;
+        nextTick(() => document.getElementById('password')?.focus());
+        return;
+    }
+
     form.post(route('register'), {
         onError: (errors) => {
             // Take the user to the first thing that needs fixing.
@@ -51,19 +58,33 @@ const trackCapsLock = (event: KeyboardEvent) => {
  * Password guidance — shown while typing, instead of a rejection after submit
  * ---------------------------------------------------------------------- */
 
-const strength = computed(() => {
-    const password = form.password;
-    if (!password) return { level: 0, label: '' };
-    if (password.length < 8) return { level: 1, label: 'Too short' };
+/**
+ * Requirements. Patterns are Unicode-aware and mirror Laravel's
+ * Password::min(8)->mixedCase()->numbers()->symbols(), except that spaces don't count as symbols,
+ * so anything accepted here is also accepted by that server rule. Enforce the same rule on the server too.
+ */
+const passwordRules = computed(() => [
+    { id: 'length', label: 'At least 8 characters', met: form.password.length >= 8 },
+    { id: 'upper', label: 'One uppercase letter (A–Z)', met: /\p{Lu}/u.test(form.password) },
+    { id: 'lower', label: 'One lowercase letter (a–z)', met: /\p{Ll}/u.test(form.password) },
+    { id: 'number', label: 'One number (0–9)', met: /\p{N}/u.test(form.password) },
+    { id: 'special', label: 'One special character (! @ # $ …)', met: /[\p{S}\p{P}]/u.test(form.password) },
+]);
 
-    const variety = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9]/].filter((pattern) => pattern.test(password)).length;
-    const score = variety + (password.length >= 12 ? 1 : 0) + (password.length >= 16 ? 1 : 0);
-    if (score <= 2) return { level: 2, label: 'Fair' };
-    if (score <= 3) return { level: 3, label: 'Good' };
-    return { level: 4, label: 'Strong' };
+const passwordValid = computed(() => passwordRules.value.every((rule) => rule.met));
+// Unmet rules stay neutral while typing, and turn red only after a submit attempt.
+const attemptedSubmit = ref(false);
+
+const strength = computed(() => {
+    if (!form.password) return { level: 0, label: '' };
+
+    const met = passwordRules.value.filter((rule) => rule.met).length;
+    if (met <= 2) return { level: 1, label: 'Weak' };
+    if (met < 5) return { level: 2, label: 'Fair' };
+    return form.password.length >= 12 ? { level: 4, label: 'Strong' } : { level: 3, label: 'Good' };
 });
 
-const strengthColors = ['bg-slate-200', 'bg-red-500', 'bg-amber-500', 'bg-[#2E9E8F]', 'bg-[#00695C]'];
+const strengthColors = ['bg-slate-200 dark:bg-slate-700', 'bg-red-500', 'bg-amber-500', 'bg-[#2E9E8F]', 'bg-[#00695C]'];
 
 const passwordsMatch = computed(() => form.password_confirmation !== '' && form.password === form.password_confirmation);
 const passwordsDiffer = computed(() => confirmTouched.value && form.password_confirmation !== '' && !passwordsMatch.value);
@@ -71,10 +92,10 @@ const passwordsDiffer = computed(() => confirmTouched.value && form.password_con
 const emailTaken = computed(() => /taken|already/i.test(form.errors.email ?? ''));
 
 const inputClass = (hasError: boolean) => [
-    'h-12 w-full rounded-xl border bg-white text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:ring-4',
+    'h-12 w-full rounded-xl border bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-slate-100 outline-none transition placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-4 dark:[color-scheme:dark]',
     hasError
-        ? 'border-red-500 focus:border-red-500 focus:ring-red-100'
-        : 'border-slate-300 hover:border-slate-400 focus:border-[#00695C] focus:ring-[#00695C]/10',
+        ? 'border-red-500 dark:border-red-400 focus:border-red-500 dark:focus:border-red-400 focus:ring-red-100 dark:focus:ring-red-500/20'
+        : 'border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500 focus:border-[#00695C] dark:focus:border-teal-400 focus:ring-[#00695C]/10 dark:focus:ring-teal-400/20',
 ];
 
 const describedBy = (...ids: (string | false | undefined)[]) => ids.filter(Boolean).join(' ') || undefined;
@@ -89,27 +110,27 @@ const nextSteps = [
 <template>
     <Head title="Create account — quickFolio" />
 
-    <main class="min-h-screen bg-white font-sans text-slate-900">
+    <main class="min-h-screen bg-white font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
         <div class="grid min-h-screen lg:grid-cols-2">
             <!-- Brand panel: tells people what happens after they sign up -->
-            <aside class="relative hidden flex-col overflow-hidden bg-[#F4F7F7] px-12 py-12 lg:flex xl:px-16" aria-label="What happens next">
+            <aside class="relative hidden flex-col overflow-hidden bg-[#F4F7F7] dark:bg-slate-900 px-12 py-12 lg:flex xl:px-16" aria-label="What happens next">
                 <Link href="/" class="w-fit rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00695C]/40" aria-label="quickFolio home">
                     <AppLogo size="lg" />
                 </Link>
 
                 <div class="mt-14 max-w-md">
-                    <p class="text-5xl font-bold leading-[1.1] tracking-tight text-[#0F172A] xl:text-6xl">
+                    <p class="text-5xl font-bold leading-[1.1] tracking-tight text-[#0F172A] dark:text-slate-50 xl:text-6xl">
                         Your next chapter
-                        <span class="text-[#00695C]">starts here.</span>
+                        <span class="text-[#00695C] dark:text-teal-300">starts here.</span>
                     </p>
-                    <p class="mt-5 text-lg leading-8 text-slate-600">Three steps from sign-up to a portfolio you can share.</p>
+                    <p class="mt-5 text-lg leading-8 text-slate-600 dark:text-slate-300">Three steps from sign-up to a portfolio you can share.</p>
 
                     <ol class="mt-8 space-y-5">
                         <li v-for="(step, index) in nextSteps" :key="step.title" class="flex gap-4">
-                            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#DCEDE9] text-sm font-bold text-[#00695C]" aria-hidden="true">{{ index + 1 }}</span>
+                            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#DCEDE9] dark:bg-teal-900/50 text-sm font-bold text-[#00695C] dark:text-teal-300" aria-hidden="true">{{ index + 1 }}</span>
                             <div>
                                 <p class="font-semibold"><span class="sr-only">Step {{ index + 1 }}: </span>{{ step.title }}</p>
-                                <p class="mt-0.5 text-sm leading-6 text-slate-500">{{ step.description }}</p>
+                                <p class="mt-0.5 text-sm leading-6 text-slate-500 dark:text-slate-400">{{ step.description }}</p>
                             </div>
                         </li>
                     </ol>
@@ -128,14 +149,14 @@ const nextSteps = [
                     </Link>
 
                     <div class="mb-7">
-                        <h1 class="text-3xl font-bold tracking-tight text-[#0F172A]">Create your account</h1>
-                        <p class="mt-2 leading-6 text-slate-500">Join quickFolio and build a portfolio that stands out.</p>
+                        <h1 class="text-3xl font-bold tracking-tight text-[#0F172A] dark:text-slate-50">Create your account</h1>
+                        <p class="mt-2 leading-6 text-slate-500 dark:text-slate-400">Join quickFolio and build a portfolio that stands out.</p>
                     </div>
 
                     <form class="space-y-4" @submit.prevent="submit">
                         <!-- Name -->
                         <div>
-                            <label for="name" class="mb-2 block text-sm font-medium text-slate-700">Full name</label>
+                            <label for="name" class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Full name</label>
                             <div class="relative">
                                 <User class="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
                                 <input
@@ -153,7 +174,7 @@ const nextSteps = [
                                     :aria-describedby="describedBy(form.errors.name && 'name-error')"
                                 />
                             </div>
-                            <p v-if="form.errors.name" id="name-error" class="mt-2 flex items-start gap-2 text-sm text-red-600" role="alert">
+                            <p v-if="form.errors.name" id="name-error" class="mt-2 flex items-start gap-2 text-sm text-red-600 dark:text-red-400" role="alert">
                                 <AlertCircle class="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                                 {{ form.errors.name }}
                             </p>
@@ -161,7 +182,7 @@ const nextSteps = [
 
                         <!-- Email -->
                         <div>
-                            <label for="email" class="mb-2 block text-sm font-medium text-slate-700">Email address</label>
+                            <label for="email" class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Email address</label>
                             <div class="relative">
                                 <Mail class="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
                                 <input
@@ -180,22 +201,22 @@ const nextSteps = [
                                     :aria-describedby="describedBy(form.errors.email && 'email-error')"
                                 />
                             </div>
-                            <p v-if="form.errors.email" id="email-error" class="mt-2 text-sm text-red-600" role="alert">
+                            <p v-if="form.errors.email" id="email-error" class="mt-2 text-sm text-red-600 dark:text-red-400" role="alert">
                                 <span class="flex items-start gap-2">
                                     <AlertCircle class="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                                     {{ form.errors.email }}
                                 </span>
                                 <!-- A dead end becomes a way forward -->
-                                <span v-if="emailTaken" class="mt-1 block pl-6 text-slate-600">
+                                <span v-if="emailTaken" class="mt-1 block pl-6 text-slate-600 dark:text-slate-300">
                                     Already registered?
-                                    <Link :href="route('login')" class="font-semibold text-[#00695C] hover:underline">Log in instead</Link>
+                                    <Link :href="route('login')" class="font-semibold text-[#00695C] dark:text-teal-300 hover:underline">Log in instead</Link>
                                 </span>
                             </p>
                         </div>
 
                         <!-- Password -->
                         <div>
-                            <label for="password" class="mb-2 block text-sm font-medium text-slate-700">Password</label>
+                            <label for="password" class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Password</label>
                             <div class="relative">
                                 <Lock class="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
                                 <input
@@ -208,14 +229,14 @@ const nextSteps = [
                                     placeholder="Create a password"
                                     :class="[...inputClass(Boolean(form.errors.password)), 'pl-12 pr-14']"
                                     :aria-invalid="form.errors.password ? 'true' : undefined"
-                                    :aria-describedby="describedBy('password-hint', form.errors.password && 'password-error', capsLock && 'caps-hint')"
+                                    :aria-describedby="describedBy('password-rules', form.errors.password && 'password-error', capsLock && 'caps-hint')"
                                     @keydown="trackCapsLock"
                                     @keyup="trackCapsLock"
                                     @blur="capsLock = false"
                                 />
                                 <button
                                     type="button"
-                                    class="absolute right-1.5 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-[#00695C] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00695C]/40"
+                                    class="absolute right-1.5 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-[#00695C] dark:hover:text-teal-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00695C]/40"
                                     :aria-label="showPasswords ? 'Hide passwords' : 'Show passwords'"
                                     :aria-pressed="showPasswords"
                                     @click="showPasswords = !showPasswords"
@@ -232,21 +253,33 @@ const nextSteps = [
                                         v-for="segment in 4"
                                         :key="segment"
                                         class="h-1.5 flex-1 rounded-full transition-colors duration-200 motion-reduce:transition-none"
-                                        :class="segment <= strength.level ? strengthColors[strength.level] : 'bg-slate-200'"
+                                        :class="segment <= strength.level ? strengthColors[strength.level] : 'bg-slate-200 dark:bg-slate-700'"
                                     />
                                 </div>
-                                <span class="w-16 text-right text-xs font-medium text-slate-600">{{ strength.label }}</span>
+                                <span class="w-16 text-right text-xs font-medium text-slate-600 dark:text-slate-300">{{ strength.label }}</span>
                             </div>
                             <p class="sr-only" aria-live="polite">{{ strength.label ? `Password strength: ${strength.label}` : '' }}</p>
 
-                            <p id="password-hint" class="mt-2 text-xs leading-5 text-slate-500">
-                                At least 8 characters. A few unrelated words make a strong, memorable password.
-                            </p>
-                            <p v-if="capsLock" id="caps-hint" class="mt-1.5 flex items-center gap-2 text-sm text-[#9A6700]">
+                            <!-- Requirements: always visible, so nobody has to guess the rules -->
+                            <ul id="password-rules" class="mt-3 grid gap-x-4 gap-y-1.5 sm:grid-cols-2" aria-label="Password requirements">
+                                <li
+                                    v-for="rule in passwordRules"
+                                    :key="rule.id"
+                                    class="flex items-center gap-2 text-xs leading-5 transition-colors motion-reduce:transition-none"
+                                    :class="rule.met ? 'text-[#16734A] dark:text-emerald-300' : attemptedSubmit ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'"
+                                >
+                                    <Check v-if="rule.met" class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                    <X v-else-if="attemptedSubmit" class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                    <Circle v-else class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                    <span>{{ rule.label }}</span>
+                                    <span class="sr-only">{{ rule.met ? '(met)' : '(not met)' }}</span>
+                                </li>
+                            </ul>
+                            <p v-if="capsLock" id="caps-hint" class="mt-1.5 flex items-center gap-2 text-sm text-[#9A6700] dark:text-amber-300">
                                 <AlertCircle class="h-4 w-4 shrink-0" aria-hidden="true" />
                                 Caps Lock is on.
                             </p>
-                            <p v-if="form.errors.password" id="password-error" class="mt-1.5 flex items-start gap-2 text-sm text-red-600" role="alert">
+                            <p v-if="form.errors.password" id="password-error" class="mt-1.5 flex items-start gap-2 text-sm text-red-600 dark:text-red-400" role="alert">
                                 <AlertCircle class="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                                 {{ form.errors.password }}
                             </p>
@@ -254,7 +287,7 @@ const nextSteps = [
 
                         <!-- Confirm password -->
                         <div>
-                            <label for="password_confirmation" class="mb-2 block text-sm font-medium text-slate-700">Confirm password</label>
+                            <label for="password_confirmation" class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Confirm password</label>
                             <div class="relative">
                                 <Lock class="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
                                 <input
@@ -273,16 +306,16 @@ const nextSteps = [
                             </div>
                             <!-- Immediate, not after submit -->
                             <p id="confirm-status" class="mt-1.5 min-h-5 text-sm" aria-live="polite">
-                                <span v-if="passwordsMatch" class="flex items-center gap-2 text-[#16734A]">
+                                <span v-if="passwordsMatch" class="flex items-center gap-2 text-[#16734A] dark:text-emerald-300">
                                     <Check class="h-4 w-4 shrink-0" aria-hidden="true" />
                                     Passwords match
                                 </span>
-                                <span v-else-if="passwordsDiffer" class="flex items-center gap-2 text-red-600">
+                                <span v-else-if="passwordsDiffer" class="flex items-center gap-2 text-red-600 dark:text-red-400">
                                     <AlertCircle class="h-4 w-4 shrink-0" aria-hidden="true" />
                                     These don’t match yet
                                 </span>
                             </p>
-                            <p v-if="form.errors.password_confirmation" id="confirm-error" class="flex items-start gap-2 text-sm text-red-600" role="alert">
+                            <p v-if="form.errors.password_confirmation" id="confirm-error" class="flex items-start gap-2 text-sm text-red-600 dark:text-red-400" role="alert">
                                 <AlertCircle class="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                                 {{ form.errors.password_confirmation }}
                             </p>
@@ -290,25 +323,25 @@ const nextSteps = [
 
                         <!-- Terms: opens in a new tab so nothing typed above is lost -->
                         <div>
-                            <label class="flex min-h-10 cursor-pointer items-start gap-3 text-sm leading-5 text-slate-600">
+                            <label class="flex min-h-10 cursor-pointer items-start gap-3 text-sm leading-5 text-slate-600 dark:text-slate-300">
                                 <input
                                     id="terms"
                                     v-model="form.terms"
                                     type="checkbox"
                                     name="terms"
                                     required
-                                    class="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 accent-[#00695C] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00695C]/40"
+                                    class="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 dark:border-slate-700 accent-[#00695C] dark:[color-scheme:dark] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00695C]/40"
                                     :aria-invalid="form.errors.terms ? 'true' : undefined"
                                     :aria-describedby="describedBy(form.errors.terms && 'terms-error')"
                                 />
                                 <span>
                                     I agree to the
-                                    <a href="/terms" target="_blank" rel="noopener noreferrer" class="font-medium text-[#00695C] hover:underline">Terms of Service<span class="sr-only"> (opens in a new tab)</span></a>
+                                    <a href="/terms" target="_blank" rel="noopener noreferrer" class="font-medium text-[#00695C] dark:text-teal-300 hover:underline">Terms of Service<span class="sr-only"> (opens in a new tab)</span></a>
                                     and
-                                    <a href="/privacy" target="_blank" rel="noopener noreferrer" class="font-medium text-[#00695C] hover:underline">Privacy Policy<span class="sr-only"> (opens in a new tab)</span></a>.
+                                    <a href="/privacy" target="_blank" rel="noopener noreferrer" class="font-medium text-[#00695C] dark:text-teal-300 hover:underline">Privacy Policy<span class="sr-only"> (opens in a new tab)</span></a>.
                                 </span>
                             </label>
-                            <p v-if="form.errors.terms" id="terms-error" class="mt-1.5 flex items-start gap-2 text-sm text-red-600" role="alert">
+                            <p v-if="form.errors.terms" id="terms-error" class="mt-1.5 flex items-start gap-2 text-sm text-red-600 dark:text-red-400" role="alert">
                                 <AlertCircle class="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                                 {{ form.errors.terms }}
                             </p>
@@ -328,14 +361,14 @@ const nextSteps = [
 
                     <template v-if="googleEnabled">
                         <div class="my-6 flex items-center gap-4" aria-hidden="true">
-                            <div class="h-px flex-1 bg-slate-200"></div>
+                            <div class="h-px flex-1 bg-slate-200 dark:bg-slate-700"></div>
                             <span class="text-xs font-medium uppercase tracking-wider text-slate-400">or</span>
-                            <div class="h-px flex-1 bg-slate-200"></div>
+                            <div class="h-px flex-1 bg-slate-200 dark:bg-slate-700"></div>
                         </div>
 
                         <a
                             href="/auth/google/redirect"
-                            class="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-slate-300 bg-white px-5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-200"
+                            class="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-5 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:border-slate-400 dark:hover:border-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-200 dark:focus-visible:ring-slate-700"
                         >
                             <svg viewBox="0 0 48 48" class="h-5 w-5" aria-hidden="true">
                                 <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5Z" transform="translate(0 4)" />
@@ -345,17 +378,17 @@ const nextSteps = [
                             </svg>
                             Sign up with Google
                         </a>
-                        <p class="mt-3 text-center text-xs leading-5 text-slate-500">
+                        <p class="mt-3 text-center text-xs leading-5 text-slate-500 dark:text-slate-400">
                             By continuing you agree to the
-                            <a href="/terms" target="_blank" rel="noopener noreferrer" class="underline hover:text-[#00695C]">Terms</a>
+                            <a href="/terms" target="_blank" rel="noopener noreferrer" class="underline hover:text-[#00695C] dark:hover:text-teal-300">Terms</a>
                             and
-                            <a href="/privacy" target="_blank" rel="noopener noreferrer" class="underline hover:text-[#00695C]">Privacy Policy</a>.
+                            <a href="/privacy" target="_blank" rel="noopener noreferrer" class="underline hover:text-[#00695C] dark:hover:text-teal-300">Privacy Policy</a>.
                         </p>
                     </template>
 
-                    <p class="mt-7 text-center text-sm text-slate-500">
+                    <p class="mt-7 text-center text-sm text-slate-500 dark:text-slate-400">
                         Already have an account?
-                        <Link :href="route('login')" class="ml-1 rounded font-semibold text-[#00695C] hover:text-[#004D40] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00695C]/40">
+                        <Link :href="route('login')" class="ml-1 rounded font-semibold text-[#00695C] dark:text-teal-300 hover:text-[#004D40] dark:hover:text-teal-200 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00695C]/40">
                             Log in
                         </Link>
                     </p>

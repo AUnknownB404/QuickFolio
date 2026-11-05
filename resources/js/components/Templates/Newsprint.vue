@@ -584,7 +584,7 @@ const year = new Date().getFullYear();
         <section v-if="has('about')" id="about" class="scroll-mt-14 border-t border-[var(--line)]">
             <div class="np-wrap grid lg:grid-cols-12">
                 <div v-if="media('about', 'about_image')" data-reveal class="np-img-cell lg:col-span-5 lg:border-r lg:border-[var(--line)]">
-                    <img :src="media('about', 'about_image')" :alt="text('about', 'about_title') ?? ''" class="h-full max-h-[44rem] min-h-[18rem] w-full object-cover" loading="lazy" />
+                    <img :src="media('about', 'about_image')" :alt="text('about', 'about_title') ?? ''" class="h-full max-h-[44rem] min-h-[18rem] w-full object-cover" loading="lazy" decoding="async" />
                 </div>
 
                 <div :class="media('about', 'about_image') ? 'lg:col-span-7' : 'lg:col-span-12'">
@@ -699,7 +699,7 @@ const year = new Date().getFullYear();
                                 class="np-media relative block overflow-hidden border-b border-[var(--line)]"
                                 :class="featureFirst && i === 0 ? 'aspect-[21/9]' : 'aspect-[16/9]'"
                             >
-                                <img v-if="p.image" :src="p.image" :alt="p.title" class="h-full w-full object-cover" loading="lazy" />
+                                <img v-if="p.image" :src="p.image" :alt="p.title" class="h-full w-full object-cover" loading="lazy" decoding="async" />
                                 <div v-else class="np-display np-tone flex h-full w-full items-center justify-center text-8xl" :class="`np-tone-${i % 3}`">{{ p.title.charAt(0).toUpperCase() }}</div>
                                 <span v-if="featureFirst && i === 0" class="np-flag">Featured</span>
                                 <span v-if="p.live" class="np-go" aria-hidden="true"><ArrowUpRight class="h-5 w-5" /></span>

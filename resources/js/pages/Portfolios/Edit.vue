@@ -2267,7 +2267,7 @@ sectionGuidance.hero = sectionGuidance.header;
                                                     :src="assetPreviewUrl(selectedSectionValues[fieldConfig.field_definition.id]?.value)"
                                                     alt=""
                                                     class="h-14 w-14 shrink-0 rounded-lg border border-[#E1E8E7] object-cover dark:border-slate-700"
-                                                />
+                                                loading="lazy" decoding="async" />
                                                 <span v-else class="grid h-14 w-14 shrink-0 place-items-center rounded-lg border border-[#E1E8E7] bg-white dark:border-slate-700 dark:bg-slate-900">
                                                     <FileText class="h-5 w-5 text-[#00695C] dark:text-teal-300" />
                                                 </span>
@@ -2440,7 +2440,7 @@ sectionGuidance.hero = sectionGuidance.header;
                                                     :src="assetPreviewUrl(selectedArrayProperty(field.key))"
                                                     alt="Preview of the selected image"
                                                     class="h-36 w-full rounded-xl border border-[#E1E8E7] object-cover dark:border-slate-700"
-                                                />
+                                                loading="lazy" decoding="async" />
                                                 <label :class="ui.dropzone">
                                                     <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-[#00695C] shadow-sm dark:bg-slate-900 dark:text-teal-300">
                                                         <ImageIcon class="h-5 w-5" />

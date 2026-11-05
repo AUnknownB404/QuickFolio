@@ -512,7 +512,7 @@ const year = new Date().getFullYear();
                     <div v-if="media('about', 'about_image')" data-reveal class="ie-portrait relative mx-auto w-full max-w-md">
                         <div class="ie-outline" aria-hidden="true" />
                         <div class="ie-media relative aspect-[4/5] overflow-hidden bg-[var(--paper-3)]">
-                            <img :src="media('about', 'about_image')" :alt="text('about', 'about_title') ?? ''" class="h-full w-full object-cover" loading="lazy" />
+                            <img :src="media('about', 'about_image')" :alt="text('about', 'about_title') ?? ''" class="h-full w-full object-cover" loading="lazy" decoding="async" />
                         </div>
                     </div>
 
@@ -639,7 +639,7 @@ const year = new Date().getFullYear();
                                     :aria-label="p.url ? `Open ${p.title}` : undefined"
                                     class="ie-media relative block aspect-[1.35] overflow-hidden bg-[var(--paper-3)]"
                                 >
-                                    <img v-if="p.image" :src="p.image" :alt="p.title" class="h-full w-full object-cover" loading="lazy" />
+                                    <img v-if="p.image" :src="p.image" :alt="p.title" class="h-full w-full object-cover" loading="lazy" decoding="async" />
                                     <div v-else class="ie-serif flex h-full w-full items-end p-8 text-7xl text-[var(--accent)]">{{ p.title.charAt(0) }}</div>
                                     <span v-if="p.url" class="ie-go" aria-hidden="true"><ArrowUpRight class="h-5 w-5" /></span>
                                 </component>

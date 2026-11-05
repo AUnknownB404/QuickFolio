@@ -420,7 +420,7 @@ const runSearch = () => {
                                     :src="template.thumbnail"
                                     :alt="`${template.name} preview`"
                                     class="h-full w-full object-cover"
-                                />
+                                loading="lazy" decoding="async" />
                                 <div v-else class="grid h-full place-items-center text-slate-300"><WandSparkles class="h-12 w-12" /></div>
                                 <span
                                     class="absolute left-3 top-3 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide"
@@ -585,7 +585,7 @@ const runSearch = () => {
                             :src="thumbnailPreview ?? editingTemplate?.thumbnail ?? ''"
                             alt="Template thumbnail preview"
                             class="h-16 w-24 rounded-lg border border-slate-200 object-cover"
-                        />
+                        loading="lazy" decoding="async" />
                     </div>
                     <label class="flex items-center gap-2 text-sm font-medium">
                         <input

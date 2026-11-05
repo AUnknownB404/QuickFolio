@@ -250,7 +250,7 @@ const heroWords = computed(() => (hero.value.hero_name || '').split(' ').filter(
             <div class="mx-auto grid max-w-7xl items-center gap-16 lg:grid-cols-12">
                 <div v-if="about.about_image" v-reveal class="lg:col-span-5">
                     <div class="img-frame aspect-[4/5] w-full max-w-md">
-                        <img :src="resolvePortfolioMediaUrl(about.about_image)" :alt="about.about_title" class="h-full w-full object-cover" />
+                        <img :src="resolvePortfolioMediaUrl(about.about_image)" :alt="about.about_title" class="h-full w-full object-cover" loading="lazy" decoding="async" />
                     </div>
                 </div>
 
@@ -347,7 +347,7 @@ const heroWords = computed(() => (hero.value.hero_name || '').split(' ').filter(
                     <TransitionGroup name="grid" tag="div">
                         <article v-for="(proj, idx) in filteredProjects" :key="proj.title + proj.category" class="work-row" @pointerenter="hovered = idx">
                             <component :is="proj.url ? 'a' : 'div'" :href="proj.url" :target="proj.url ? '_blank' : undefined" rel="noopener" class="work-link focus-ring">
-                                <img v-if="proj.image" :src="resolvePortfolioMediaUrl(proj.image)" :alt="proj.title" class="work-thumb lg:hidden" loading="lazy" />
+                                <img v-if="proj.image" :src="resolvePortfolioMediaUrl(proj.image)" :alt="proj.title" class="work-thumb lg:hidden" loading="lazy" decoding="async" />
                                 <span class="work-title">{{ proj.title }}</span>
                                 <span class="work-meta">
                                     <span v-if="proj.category">{{ proj.category }}</span>
@@ -360,7 +360,7 @@ const heroWords = computed(() => (hero.value.hero_name || '').split(' ').filter(
                     <!-- Cursor-following preview (desktop) -->
                     <div class="work-preview hidden lg:block" :class="{ show: hovered > -1 && filteredProjects[hovered]?.image }" :style="{ transform: `translate3d(${mouse.x}px, ${mouse.y}px, 0)` }" aria-hidden="true">
                         <div class="work-preview-inner">
-                            <img v-for="(proj, idx) in filteredProjects" :key="'p' + idx" v-show="proj.image" :src="proj.image ? resolvePortfolioMediaUrl(proj.image) : ''" alt="" :class="{ on: hovered === idx }" />
+                            <img v-for="(proj, idx) in filteredProjects" :key="'p' + idx" v-show="proj.image" :src="proj.image ? resolvePortfolioMediaUrl(proj.image) : ''" alt="" :class="{ on: hovered === idx }" loading="lazy" decoding="async" />
                         </div>
                     </div>
                 </div>

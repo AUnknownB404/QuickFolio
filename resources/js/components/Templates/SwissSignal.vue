@@ -642,7 +642,7 @@ const year = new Date().getFullYear();
                 <div class="mt-12 grid items-start gap-14 lg:grid-cols-12 lg:gap-16">
                     <div v-if="media('about', 'about_image')" data-reveal class="lg:col-span-5">
                         <div class="sg-frame mx-auto max-w-md">
-                            <img :src="media('about', 'about_image')" :alt="text('about', 'about_title') ?? ''" class="aspect-[4/5] w-full object-cover" loading="lazy" />
+                            <img :src="media('about', 'about_image')" :alt="text('about', 'about_title') ?? ''" class="aspect-[4/5] w-full object-cover" loading="lazy" decoding="async" />
                         </div>
                     </div>
 
@@ -793,7 +793,7 @@ const year = new Date().getFullYear();
                                 class="sg-media relative block overflow-hidden"
                                 :class="featureFirst && i === 0 ? 'aspect-[16/9]' : 'aspect-[4/3]'"
                             >
-                                <img v-if="p.image" :src="p.image" :alt="p.title" class="h-full w-full object-cover" loading="lazy" />
+                                <img v-if="p.image" :src="p.image" :alt="p.title" class="h-full w-full object-cover" loading="lazy" decoding="async" />
                                 <div v-else class="sg-display sg-tone flex h-full w-full items-center justify-center text-8xl" :class="`sg-tone-${i % 3}`">
                                     {{ p.title.charAt(0).toUpperCase() }}
                                 </div>

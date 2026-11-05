@@ -301,7 +301,7 @@ const startSteps = [
                                     :src="portfolio.template.thumbnail"
                                     alt=""
                                     class="h-full w-full object-cover transition duration-500 motion-safe:group-hover:scale-[1.02]"
-                                />
+                                loading="lazy" decoding="async" />
                                 <div v-else class="flex h-full flex-col items-center justify-center p-6 text-center">
                                     <div class="flex h-14 w-14 items-center justify-center rounded-2xl border border-[#CFE0DB] dark:border-slate-600 bg-white dark:bg-slate-900 text-[#00695C] dark:text-teal-400 shadow-sm">
                                         <LayoutTemplate class="h-7 w-7" />

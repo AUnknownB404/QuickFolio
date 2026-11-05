@@ -578,7 +578,7 @@ const year = new Date().getFullYear();
             <div class="mx-auto grid w-full max-w-[1240px] items-center gap-14 px-5 py-28 sm:px-8 lg:grid-cols-12 lg:gap-20">
                 <div v-if="media('about', 'about_image')" data-reveal class="lg:col-span-5">
                     <div class="ts-frame mx-auto max-w-md">
-                        <img :src="media('about', 'about_image')" :alt="text('about', 'about_title') ?? ''" class="aspect-[4/5] w-full object-cover" loading="lazy" />
+                        <img :src="media('about', 'about_image')" :alt="text('about', 'about_title') ?? ''" class="aspect-[4/5] w-full object-cover" loading="lazy" decoding="async" />
                     </div>
                 </div>
 
@@ -702,7 +702,7 @@ const year = new Date().getFullYear();
                                 class="ts-media relative block overflow-hidden"
                                 :class="featureFirst && i === 0 ? 'aspect-[16/10] lg:w-[58%] lg:shrink-0' : 'aspect-[4/3]'"
                             >
-                                <img v-if="p.image" :src="p.image" :alt="p.title" class="h-full w-full object-cover" loading="lazy" />
+                                <img v-if="p.image" :src="p.image" :alt="p.title" class="h-full w-full object-cover" loading="lazy" decoding="async" />
                                 <div v-else class="ts-display ts-tone flex h-full w-full items-center justify-center text-8xl" :class="`ts-tone-${i % 3}`">
                                     {{ p.title.charAt(0).toUpperCase() }}
                                 </div>

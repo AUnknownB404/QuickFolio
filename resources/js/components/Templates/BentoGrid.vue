@@ -224,7 +224,7 @@ onBeforeUnmount(() => {
                 <section v-if="hasAbout" id="about" data-section class="section grid gap-12 lg:grid-cols-5">
                     <div v-if="about.about_image" class="lg:col-span-2">
                         <div class="portrait portrait-alt group">
-                            <img :src="resolvePortfolioMediaUrl(about.about_image)" :alt="about.about_title || ''" class="h-full w-full object-cover transition-transform duration-[900ms] ease-out group-hover:scale-[1.05]" />
+                            <img :src="resolvePortfolioMediaUrl(about.about_image)" :alt="about.about_title || ''" class="h-full w-full object-cover transition-transform duration-[900ms] ease-out group-hover:scale-[1.05]" loading="lazy" decoding="async" />
                         </div>
                     </div>
                     <div :class="about.about_image ? 'lg:col-span-3' : 'lg:col-span-5 max-w-3xl'">
@@ -256,7 +256,7 @@ onBeforeUnmount(() => {
                         >
                             <component :is="project.url ? 'a' : 'div'" :href="project.url" :target="project.url ? '_blank' : undefined" rel="noreferrer" class="block">
                                 <div class="relative h-[70vh] w-full aspect-[16/9] overflow-hidden bg-gradient-to-br from-[#f1e6f8] to-[#e07ad8]">
-                                    <img v-if="project.image" :src="resolvePortfolioMediaUrl(project.image)" :alt="project.title || ''" class="h-full w-full object-cover transition-transform duration-[900ms] ease-out group-hover:scale-[1.04]" loading="lazy" />
+                                    <img v-if="project.image" :src="resolvePortfolioMediaUrl(project.image)" :alt="project.title || ''" class="h-full w-full object-cover transition-transform duration-[900ms] ease-out group-hover:scale-[1.04]" loading="lazy" decoding="async" />
                                     <span v-else class="grid h-full w-full place-items-center font-display text-9xl text-[#2f1a7a]/30" aria-hidden="true">{{ (project.title || '•').charAt(0) }}</span>
                                 </div>
                                 <div class="flex items-center justify-between gap-6 p-6 sm:p-8">

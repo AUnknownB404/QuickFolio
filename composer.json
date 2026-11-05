@@ -61,9 +61,6 @@
             "npm run build",
             "mkdir -p /vercel/output/static",
             "cp -r public/build /vercel/output/static",
-            "php artisan config:clear",
-            "php artisan db:show --database=pgsql",
-            "php artisan migrate:status --database=pgsql_unpooled",
             "php artisan migrate --database=pgsql_unpooled --force"
         ]
     },
