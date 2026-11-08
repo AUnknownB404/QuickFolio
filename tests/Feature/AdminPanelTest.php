@@ -226,6 +226,28 @@ class AdminPanelTest extends TestCase
         Storage::disk('neon')->assertExists($newThumbnailPath);
     }
 
+    public function test_administrators_cannot_upload_template_images_over_four_megabytes(): void
+    {
+        $admin = User::factory()->create();
+        $admin->role = 'admin';
+        $admin->save();
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC');
+        $largeImage = UploadedFile::fake()->createWithContent(
+            'large-template.png',
+            $png.str_repeat("\0", 4 * 1024 * 1024)
+        );
+
+        $this->actingAs($admin)
+            ->post(route('admin.templates.store'), [
+                'name' => 'Large Image Template',
+                'is_published' => false,
+                'thumbnail' => $largeImage,
+            ])
+            ->assertSessionHasErrors('thumbnail');
+
+        $this->assertDatabaseMissing('templates', ['slug' => 'large-image-template']);
+    }
+
     public function test_administrators_cannot_remove_their_own_admin_access(): void
     {
         $admin = User::factory()->create();

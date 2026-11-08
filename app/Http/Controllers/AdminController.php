@@ -207,7 +207,7 @@ class AdminController extends Controller
             'description' => ['nullable', 'string', 'max:5000'],
             'preview_url' => ['nullable', 'string', 'max:2048'],
             'is_published' => ['required', 'boolean'],
-            'thumbnail' => ['nullable', 'image', 'max:5120'],
+            'thumbnail' => ['nullable', 'image', 'max:4096'],
         ];
     }
 
