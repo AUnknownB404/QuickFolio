@@ -105,14 +105,14 @@ The PHP CLI used for local development must have the `pdo_pgsql` extension enabl
 
 ## Vercel deployment
 
-In Vercel, set the build command to `composer run vercel`. It disables Composer's per-process timeout, builds the frontend, publishes the built assets, then **drops all tables, recreates the schema, and runs `DatabaseSeeder`** using `pgsql_unpooled`. This intentionally destructive step is useful for verifying a clean database deployment, but every deployment erases application data (including users and portfolios). Before deploying, configure these Vercel environment variables for the intended environment:
+In Vercel, set the build command to `composer run vercel`. It builds the frontend, publishes the built assets, and applies migrations using `pgsql_unpooled`. Before deploying, configure these Vercel environment variables for the intended environment:
 
 - `APP_ENV=production`, `APP_DEBUG=false`, and `APP_KEY` (generate a key with `php artisan key:generate --show` and save it as a secret).
 - `DB_CONNECTION=pgsql`, `DATABASE_URL` (Neon's pooled URL), and `DATABASE_URL_UNPOOLED` (the matching direct URL). Both URLs must point to the same Neon branch.
-- `SESSION_DRIVER=database` and `QUEUE_CONNECTION=sync` (unless you have a separate queue worker). Vercel defaults to Laravel's in-memory `array` cache to avoid making every throttled web request depend on Neon cache-table writes. This cache is not shared or durable across serverless instances, so rate limits are best-effort. Set `VERCEL_CACHE_STORE` only if you have configured a reliable shared cache service; `CACHE_STORE` is used outside Vercel.
+- `CACHE_STORE=database`, `SESSION_DRIVER=database`, `DB_CACHE_CONNECTION=pgsql_unpooled`, and `QUEUE_CONNECTION=sync` (unless you have a separate queue worker).
 - `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_ENDPOINT_URL_S3`, and `AWS_REGION` for Neon Object Storage.
 
-Application database requests use the pooled URL; deployment migrations use the direct URL. Vercel uses an in-memory cache by default and does not send cache or rate-limit operations to Neon. To select a different cache on Vercel, set `VERCEL_CACHE_STORE` to a configured shared cache driver. Leave `NEON_ENDPOINT_ID` unset: the runtime identifies the Neon endpoint from the URL hostname via TLS SNI. `neon deploy` pulls Neon variables into the local environment, but Vercel's environment variables must be configured separately. Do not commit `.env` or paste connection URLs into source control.
+The application uses the pooled URL for normal requests; rate-limit locks and deployment migrations use the direct URL. On Vercel, leave `NEON_ENDPOINT_ID` unset: the runtime identifies the Neon endpoint from the URL hostname via TLS SNI. `neon deploy` pulls Neon variables into the local environment, but Vercel's environment variables must be configured separately. Do not commit `.env` or paste connection URLs into source control.
 
 Before deploying, verify the environment and Neon connection from a local checkout configured with the same database settings. These commands connect to the database selected by the configured URLs; do not point them at production unless that is intentional:
 
@@ -122,7 +122,7 @@ php artisan db:show --database=pgsql
 php artisan migrate:status --database=pgsql_unpooled
 ```
 
-Confirm `DATABASE_URL` and `DATABASE_URL_UNPOOLED` both refer to the intended Neon branch. `db:show` checks the pooled application connection, and `migrate:status` checks which migrations have run using the direct connection. The Vercel build command targets `pgsql_unpooled` and recreates the schema from scratch.
+Confirm `DATABASE_URL` and `DATABASE_URL_UNPOOLED` both refer to the intended Neon branch. `db:show` checks the pooled application connection, and `migrate:status` checks which migrations have run using the direct connection. The Vercel build command below applies pending migrations to `pgsql_unpooled`.
 
 Portfolio uploads (images and documents) and template thumbnails use Neon Object Storage's S3-compatible API. `neon.ts` declares a private `assets` bucket and a `public_read` `portfolio-assets` bucket; the app stores public object URLs in portfolio content, so objects uploaded to `portfolio-assets` can be read anonymously. Do not store private files in that bucket. Configure these Neon-provided variables in Vercel (and locally via `neon deploy`):
 

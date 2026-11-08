@@ -2,16 +2,10 @@
 
 use Illuminate\Support\Str;
 
-$databaseCacheConnection = env('DB_CACHE_CONNECTION');
-$defaultCacheStore = env('CACHE_STORE', 'database');
-
-if ($databaseCacheConnection === 'pgsql_unpooled') {
-    $databaseCacheConnection = null;
-}
-
-if (env('VERCEL')) {
-    $defaultCacheStore = env('VERCEL_CACHE_STORE', 'array');
-}
+$databaseConnection = env('DB_CONNECTION', env('DATABASE_URL') ? 'pgsql' : 'sqlite');
+$databaseCacheConnection = $databaseConnection === 'pgsql' && env('DATABASE_URL_UNPOOLED')
+    ? 'pgsql_unpooled'
+    : null;
 
 return [
 
@@ -26,7 +20,7 @@ return [
     |
     */
 
-    'default' => $defaultCacheStore,
+    'default' => env('CACHE_STORE', 'database'),
 
     /*
     |--------------------------------------------------------------------------
@@ -51,7 +45,8 @@ return [
 
         'database' => [
             'driver' => 'database',
-            'connection' => $databaseCacheConnection,
+            // Database rate limiting uses row locks, so prefer Neon's direct endpoint when available.
+            'connection' => env('DB_CACHE_CONNECTION', $databaseCacheConnection),
             'table' => env('DB_CACHE_TABLE', 'cache'),
             'lock_connection' => env('DB_CACHE_LOCK_CONNECTION'),
             'lock_table' => env('DB_CACHE_LOCK_TABLE'),
