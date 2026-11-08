@@ -114,6 +114,14 @@ In Vercel, set the build command to `composer run vercel`. It builds the fronten
 
 The application uses the pooled URL for normal requests; rate-limit locks and deployment migrations use the direct URL. On Vercel, the app uses database-backed sessions/cache and compiles Blade views into the writable system temporary directory. The app derives the endpoint ID from standard Neon hostnames, which take precedence over `NEON_ENDPOINT_ID`; the variable is normally not needed on Vercel and should be set explicitly only when using a custom database hostname. `neon deploy` pulls Neon variables into the local environment, but Vercel's environment variables must be configured separately. Do not commit `.env` or paste connection URLs into source control.
 
+For temporary production troubleshooting, set a strong, unique `DIAGNOSTICS_TOKEN` in the Vercel environment and redeploy. Then send a `POST` request to `/_diagnostics` with that value in the `X-Diagnostics-Token` header. The endpoint reports runtime, database/table, cache, session, compiled-view directory, and Vite manifest checks; it does not return environment values or stack traces. For example, in PowerShell:
+
+```powershell
+Invoke-RestMethod -Method Post -Uri "https://<your-deployment>/_diagnostics" -Headers @{ "X-Diagnostics-Token" = "<your-temporary-token>" }
+```
+
+Remove `DIAGNOSTICS_TOKEN` from Vercel after troubleshooting; without it, the endpoint responds with `404`.
+
 Before deploying, verify the environment and Neon connection from a local checkout configured with the same database settings. These commands connect to the database selected by the configured URLs; do not point them at production unless that is intentional:
 
 ```bash

@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'diagnostics' => [
+        'token' => env('DIAGNOSTICS_TOKEN'),
+    ],
+
 ];
