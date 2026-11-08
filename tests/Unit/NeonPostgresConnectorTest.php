@@ -15,6 +15,17 @@ class NeonPostgresConnectorTest extends TestCase
         $this->assertStringContainsString(';options=endpoint=ep-empty-fire-azjpo2ac', $dsn);
     }
 
+    public function test_it_prefers_the_host_endpoint_over_a_mismatched_configured_endpoint(): void
+    {
+        $dsn = $this->dsnForHost(
+            'ep-empty-fire-azjpo2ac-pooler.c-3.ap-southeast-1.aws.neon.tech',
+            'ep-wrong-endpoint'
+        );
+
+        $this->assertStringContainsString(';options=endpoint=ep-empty-fire-azjpo2ac', $dsn);
+        $this->assertStringNotContainsString('endpoint=ep-wrong-endpoint', $dsn);
+    }
+
     public function test_it_derives_the_endpoint_id_from_a_direct_neon_host(): void
     {
         $dsn = $this->dsnForHost('ep-empty-fire-azjpo2ac.c-3.ap-southeast-1.aws.neon.tech');
@@ -29,7 +40,7 @@ class NeonPostgresConnectorTest extends TestCase
         $this->assertStringNotContainsString('options=endpoint=', $dsn);
     }
 
-    private function dsnForHost(string $host): string
+    private function dsnForHost(string $host, ?string $configuredEndpoint = null): string
     {
         $connector = new NeonPostgresConnector;
         $method = new ReflectionMethod($connector, 'getDsn');
@@ -40,6 +51,7 @@ class NeonPostgresConnectorTest extends TestCase
             'port' => 5432,
             'charset' => 'utf8',
             'sslmode' => 'require',
+            'neon_endpoint_id' => $configuredEndpoint,
         ]);
     }
 }

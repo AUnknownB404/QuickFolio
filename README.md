@@ -81,7 +81,7 @@ Keep SQLite as the default for everyday local development. To temporarily run th
 
 1. In the Neon console, create or select a **development branch**. Use its pooled connection string for `DATABASE_URL` and its direct connection string for `DATABASE_URL_UNPOOLED`; do not test migrations against production.
 2. Set `DB_CONNECTION=pgsql` in `.env`. Keep `CACHE_STORE=file`, `SESSION_DRIVER=file`, and `QUEUE_CONNECTION=sync` so these local services do not create extra database connections.
-3. Use the complete Neon URLs, including their SSL query parameters. The app derives the endpoint ID from standard Neon hostnames and passes it as a PostgreSQL connection option, so `NEON_ENDPOINT_ID` is normally unnecessary. Set it explicitly only when using a custom database hostname. Do not set it when the server reports an inconsistent project name between SNI and the project option.
+3. Use the complete Neon URLs, including their SSL query parameters. The app derives the endpoint ID from standard Neon hostnames and passes it as a PostgreSQL connection option. The hostname takes precedence over `NEON_ENDPOINT_ID`, so the variable is normally unnecessary; set it explicitly only when using a custom database hostname. Do not set it when the server reports an inconsistent project name between SNI and the project option.
 4. Clear cached Laravel configuration, then verify the connection:
 
    ```bash
@@ -112,7 +112,7 @@ In Vercel, set the build command to `composer run vercel`. It builds the fronten
 - `CACHE_STORE=database`, `SESSION_DRIVER=database`, `DB_CACHE_CONNECTION=pgsql_unpooled`, and `QUEUE_CONNECTION=sync` (unless you have a separate queue worker).
 - `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_ENDPOINT_URL_S3`, and `AWS_REGION` for Neon Object Storage.
 
-The application uses the pooled URL for normal requests; rate-limit locks and deployment migrations use the direct URL. The app derives the endpoint ID from standard Neon hostnames, so `NEON_ENDPOINT_ID` is normally not needed on Vercel; set it explicitly only when using a custom database hostname. `neon deploy` pulls Neon variables into the local environment, but Vercel's environment variables must be configured separately. Do not commit `.env` or paste connection URLs into source control.
+The application uses the pooled URL for normal requests; rate-limit locks and deployment migrations use the direct URL. The app derives the endpoint ID from standard Neon hostnames, which take precedence over `NEON_ENDPOINT_ID`; the variable is normally not needed on Vercel and should be set explicitly only when using a custom database hostname. `neon deploy` pulls Neon variables into the local environment, but Vercel's environment variables must be configured separately. Do not commit `.env` or paste connection URLs into source control.
 
 Before deploying, verify the environment and Neon connection from a local checkout configured with the same database settings. These commands connect to the database selected by the configured URLs; do not point them at production unless that is intentional:
 
