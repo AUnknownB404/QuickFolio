@@ -105,7 +105,7 @@ The PHP CLI used for local development must have the `pdo_pgsql` extension enabl
 
 ## Vercel deployment
 
-In Vercel, set the build command to `composer run vercel`. It builds the frontend, publishes the built assets, then **drops all tables, recreates the schema, and runs `DatabaseSeeder`** using `pgsql_unpooled`. This intentionally destructive step is useful for verifying a clean database deployment, but every deployment erases application data (including users and portfolios). Before deploying, configure these Vercel environment variables for the intended environment:
+In Vercel, set the build command to `composer run vercel`. It disables Composer's per-process timeout, builds the frontend, publishes the built assets, then **drops all tables, recreates the schema, and runs `DatabaseSeeder`** using `pgsql_unpooled`. This intentionally destructive step is useful for verifying a clean database deployment, but every deployment erases application data (including users and portfolios). Before deploying, configure these Vercel environment variables for the intended environment:
 
 - `APP_ENV=production`, `APP_DEBUG=false`, and `APP_KEY` (generate a key with `php artisan key:generate --show` and save it as a secret).
 - `DB_CONNECTION=pgsql`, `DATABASE_URL` (Neon's pooled URL), and `DATABASE_URL_UNPOOLED` (the matching direct URL). Both URLs must point to the same Neon branch.
