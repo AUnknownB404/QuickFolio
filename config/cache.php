@@ -3,9 +3,14 @@
 use Illuminate\Support\Str;
 
 $databaseCacheConnection = env('DB_CACHE_CONNECTION');
+$defaultCacheStore = env('CACHE_STORE', 'database');
 
 if ($databaseCacheConnection === 'pgsql_unpooled') {
     $databaseCacheConnection = null;
+}
+
+if (env('VERCEL')) {
+    $defaultCacheStore = env('VERCEL_CACHE_STORE', 'array');
 }
 
 return [
@@ -21,7 +26,7 @@ return [
     |
     */
 
-    'default' => env('CACHE_STORE', 'database'),
+    'default' => $defaultCacheStore,
 
     /*
     |--------------------------------------------------------------------------
