@@ -2,6 +2,12 @@
 
 use Illuminate\Support\Str;
 
+$databaseCacheConnection = env('DB_CACHE_CONNECTION');
+
+if ($databaseCacheConnection === 'pgsql_unpooled') {
+    $databaseCacheConnection = null;
+}
+
 return [
 
     /*
@@ -40,7 +46,7 @@ return [
 
         'database' => [
             'driver' => 'database',
-            'connection' => env('DB_CACHE_CONNECTION'),
+            'connection' => $databaseCacheConnection,
             'table' => env('DB_CACHE_TABLE', 'cache'),
             'lock_connection' => env('DB_CACHE_LOCK_CONNECTION'),
             'lock_table' => env('DB_CACHE_LOCK_TABLE'),
