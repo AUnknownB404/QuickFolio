@@ -20,7 +20,7 @@ return [
     |
     */
 
-    'default' => env('CACHE_STORE', 'database'),
+    'default' => env('VERCEL') ? 'database' : env('CACHE_STORE', 'database'),
 
     /*
     |--------------------------------------------------------------------------

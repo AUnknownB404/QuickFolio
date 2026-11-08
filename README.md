@@ -109,7 +109,7 @@ In Vercel, set the build command to `composer run vercel`. It builds the fronten
 
 - `APP_ENV=production`, `APP_DEBUG=false`, and `APP_KEY` (generate a key with `php artisan key:generate --show` and save it as a secret).
 - `DB_CONNECTION=pgsql`, `DATABASE_URL` (Neon's pooled URL), and `DATABASE_URL_UNPOOLED` (the matching direct URL). Both URLs must point to the same Neon branch.
-- `CACHE_STORE=database`, `SESSION_DRIVER=database`, `DB_CACHE_CONNECTION=pgsql_unpooled`, and `QUEUE_CONNECTION=sync` (unless you have a separate queue worker).
+- `CACHE_STORE=database`, `SESSION_DRIVER=database`, `DB_CACHE_CONNECTION=pgsql_unpooled`, and `QUEUE_CONNECTION=sync` (unless you have a separate queue worker). The app enforces database-backed cache and sessions on Vercel even if local file-based values are also configured.
 - `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_ENDPOINT_URL_S3`, and `AWS_REGION` for Neon Object Storage.
 
 The application uses the pooled URL for normal requests; rate-limit locks and deployment migrations use the direct URL. The app derives the endpoint ID from standard Neon hostnames, which take precedence over `NEON_ENDPOINT_ID`; the variable is normally not needed on Vercel and should be set explicitly only when using a custom database hostname. `neon deploy` pulls Neon variables into the local environment, but Vercel's environment variables must be configured separately. Do not commit `.env` or paste connection URLs into source control.
