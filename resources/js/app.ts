@@ -5,7 +5,7 @@ import axios from 'axios';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import type { DefineComponent } from 'vue';
 import { createApp, Fragment, h, ref } from 'vue';
-import { ZiggyVue } from '../../vendor/tightenco/ziggy';
+import { ZiggyVue } from 'ziggy-js';
 import GlobalLoadingOverlay from './components/GlobalLoadingOverlay.vue';
 import { initializeTheme } from './composables/useAppearance';
 
