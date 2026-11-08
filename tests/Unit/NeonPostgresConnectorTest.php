@@ -12,7 +12,7 @@ class NeonPostgresConnectorTest extends TestCase
     {
         $dsn = $this->dsnForHost('ep-empty-fire-azjpo2ac-pooler.c-3.ap-southeast-1.aws.neon.tech');
 
-        $this->assertStringContainsString(';options=endpoint=ep-empty-fire-azjpo2ac', $dsn);
+        $this->assertStringContainsString(';options=endpoint=ep-empty-fire-azjpo2ac-pooler', $dsn);
     }
 
     public function test_it_prefers_the_host_endpoint_over_a_mismatched_configured_endpoint(): void
@@ -22,7 +22,7 @@ class NeonPostgresConnectorTest extends TestCase
             'ep-wrong-endpoint'
         );
 
-        $this->assertStringContainsString(';options=endpoint=ep-empty-fire-azjpo2ac', $dsn);
+        $this->assertStringContainsString(';options=endpoint=ep-empty-fire-azjpo2ac-pooler', $dsn);
         $this->assertStringNotContainsString('endpoint=ep-wrong-endpoint', $dsn);
     }
 

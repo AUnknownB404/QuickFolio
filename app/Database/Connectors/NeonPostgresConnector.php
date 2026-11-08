@@ -12,9 +12,8 @@ class NeonPostgresConnector extends PostgresConnector
         $host = $config['host'] ?? null;
         if (is_string($host) && str_ends_with(strtolower($host), '.neon.tech')) {
             $hostname = strtolower(explode('.', $host, 2)[0]);
-            $hostEndpointId = preg_replace('/-pooler$/', '', $hostname);
-            if (is_string($hostEndpointId) && preg_match('/^ep-[a-z0-9]+(?:-[a-z0-9]+)*$/', $hostEndpointId) === 1) {
-                $endpointId = $hostEndpointId;
+            if (preg_match('/^ep-[a-z0-9]+(?:-[a-z0-9]+)*$/', $hostname) === 1) {
+                $endpointId = $hostname;
             }
         }
 
