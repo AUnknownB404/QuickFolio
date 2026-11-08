@@ -75,7 +75,6 @@ const templateForm = useForm({
     is_published: false as boolean,
     thumbnail: null as File | null,
 });
-const maxThumbnailSize = 4 * 1024 * 1024;
 
 const openCreateTemplate = () => {
     editingTemplate.value = null;
@@ -146,20 +145,10 @@ const deleteTemplate = (template: TemplateRow) => {
 
 const setThumbnail = (event: Event) => {
     const input = event.target as HTMLInputElement;
-    const file = input.files?.[0] ?? null;
+    templateForm.thumbnail = input.files?.[0] ?? null;
     clearThumbnailPreview();
-    templateForm.clearErrors('thumbnail');
-
-    if (file && file.size > maxThumbnailSize) {
-        templateForm.thumbnail = null;
-        input.value = '';
-        templateForm.setError('thumbnail', 'The template image must be 4 MB or smaller.');
-        return;
-    }
-
-    templateForm.thumbnail = file;
-    if (file) {
-        thumbnailPreview.value = URL.createObjectURL(file);
+    if (templateForm.thumbnail) {
+        thumbnailPreview.value = URL.createObjectURL(templateForm.thumbnail);
     }
 };
 
@@ -582,7 +571,7 @@ const runSearch = () => {
                     </label>
                     <div class="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
                         <label class="block space-y-1.5 text-sm font-medium"
-                            >Template image <span class="font-normal text-slate-400">(JPG, PNG, or WebP; max 4 MB)</span>
+                            >Template image <span class="font-normal text-slate-400">(JPG, PNG, or WebP; max 5 MB)</span>
                             <input
                                 type="file"
                                 accept="image/*"
