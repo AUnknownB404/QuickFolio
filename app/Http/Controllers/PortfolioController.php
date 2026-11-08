@@ -4,8 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\FieldDefinition;
 use App\Models\Portfolio;
-use App\Models\PortfolioFieldValue;
-use App\Models\PortfolioSection;
 use App\Models\Template;
 use App\Services\GoogleFormIntegration;
 use App\Services\PortfolioService;
@@ -104,14 +102,15 @@ class PortfolioController extends Controller
     {
         $this->authorize('update', $portfolio);
 
-        $previousUploadPaths = $this->portfolioUploadPaths($portfolio);
+        $portfolioSections = $portfolio->sections()->with('fieldValues')->get()->keyBy('id');
+        $previousUploadPaths = $this->portfolioUploadPaths($portfolio, $portfolioSections);
 
         $validated = $request->validate([
             'sections' => ['required', 'array'],
-            'sections.*.id' => ['required', 'exists:portfolio_sections,id'],
+            'sections.*.id' => ['required', 'integer'],
             'sections.*.is_enabled' => ['required', 'boolean'],
             'sections.*.field_values' => ['nullable', 'array'],
-            'sections.*.field_values.*.field_definition_id' => ['required', 'exists:field_definitions,id'],
+            'sections.*.field_values.*.field_definition_id' => ['required', 'integer'],
             'sections.*.field_values.*.value' => ['nullable'],
             'pending_uploads' => ['sometimes', 'array'],
             'pending_uploads.*' => ['required', 'file', 'max:10240'],
@@ -152,6 +151,31 @@ class PortfolioController extends Controller
             throw ValidationException::withMessages([
                 'google_form_message_entry' => 'Use a different Google Forms question ID for each field.',
             ]);
+        }
+
+        $fieldDefinitionIds = collect($validated['sections'])
+            ->flatMap(fn (array $section) => collect($section['field_values'] ?? [])
+                ->pluck('field_definition_id'))
+            ->unique()
+            ->values();
+        $fieldDefinitions = $fieldDefinitionIds->isEmpty()
+            ? collect()
+            : FieldDefinition::whereIn('id', $fieldDefinitionIds)->get()->keyBy('id');
+
+        foreach ($validated['sections'] as $sectionIndex => $sectionData) {
+            if (! $portfolioSections->has((int) $sectionData['id'])) {
+                throw ValidationException::withMessages([
+                    "sections.{$sectionIndex}.id" => 'The selected section is invalid.',
+                ]);
+            }
+
+            foreach ($sectionData['field_values'] ?? [] as $fieldValueIndex => $fieldValueData) {
+                if (! $fieldDefinitions->has((int) $fieldValueData['field_definition_id'])) {
+                    throw ValidationException::withMessages([
+                        "sections.{$sectionIndex}.field_values.{$fieldValueIndex}.field_definition_id" => 'The selected field is invalid.',
+                    ]);
+                }
+            }
         }
 
         $pendingUploads = $request->file('pending_uploads', []);
@@ -223,7 +247,7 @@ class PortfolioController extends Controller
                 ]);
             }
 
-            DB::transaction(function () use ($portfolio, $validated) {
+            DB::transaction(function () use ($portfolio, $portfolioSections, $fieldDefinitions, $validated) {
                 $portfolio->update([
                     'google_form_url' => GoogleFormIntegration::formUrl($validated['google_form_url'] ?? null),
                     'google_form_name_entry' => $validated['google_form_name_entry'] ?? null,
@@ -231,46 +255,44 @@ class PortfolioController extends Controller
                     'google_form_message_entry' => $validated['google_form_message_entry'] ?? null,
                 ]);
 
+                $fieldValueRows = [];
                 foreach ($validated['sections'] as $secData) {
-                    $section = PortfolioSection::where('portfolio_id', $portfolio->id)
-                        ->where('id', $secData['id'])
-                        ->first();
-
-                    if (! $section) {
-                        continue;
-                    }
-
+                    $section = $portfolioSections->get((int) $secData['id']);
                     $section->update([
                         'is_enabled' => $secData['is_enabled'],
                     ]);
 
                     if (isset($secData['field_values'])) {
                         foreach ($secData['field_values'] as $fvData) {
-                            $fieldDefId = $fvData['field_definition_id'];
-                            $fieldDef = FieldDefinition::find($fieldDefId);
+                            $fieldDefId = (int) $fvData['field_definition_id'];
+                            $fieldDef = $fieldDefinitions->get($fieldDefId);
                             $value = $fvData['value'] ?? null;
 
-                            if ($fieldDef) {
-                                if ($fieldDef->data_type === 'email' && ! empty($value)) {
-                                    validator(['email' => $value], ['email' => 'email'])->validate();
-                                } elseif ($fieldDef->data_type === 'url' && ! empty($value)) {
-                                    validator(['url' => $value], ['url' => 'url'])->validate();
-                                } elseif ($fieldDef->data_type === 'string' && $value !== null && $value !== '') {
-                                    validator(['value' => $value], ['value' => 'string'])->validate();
-                                }
+                            if ($fieldDef->data_type === 'email' && ! empty($value)) {
+                                validator(['email' => $value], ['email' => 'email'])->validate();
+                            } elseif ($fieldDef->data_type === 'url' && ! empty($value)) {
+                                validator(['url' => $value], ['url' => 'url'])->validate();
+                            } elseif ($fieldDef->data_type === 'string' && $value !== null && $value !== '') {
+                                validator(['value' => $value], ['value' => 'string'])->validate();
                             }
 
-                            PortfolioFieldValue::updateOrCreate(
-                                [
-                                    'portfolio_section_id' => $section->id,
-                                    'field_definition_id' => $fieldDefId,
-                                ],
-                                [
-                                    'value' => $value,
-                                ]
-                            );
+                            $fieldValueRows[$section->id.':'.$fieldDefId] = [
+                                'portfolio_section_id' => $section->id,
+                                'field_definition_id' => $fieldDefId,
+                                'value' => $value === null ? null : json_encode($value, JSON_THROW_ON_ERROR),
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ];
                         }
                     }
+                }
+
+                if ($fieldValueRows !== []) {
+                    DB::table('portfolio_field_values')->upsert(
+                        array_values($fieldValueRows),
+                        ['portfolio_section_id', 'field_definition_id'],
+                        ['value', 'updated_at']
+                    );
                 }
             });
         } catch (Throwable $exception) {
@@ -324,12 +346,12 @@ class PortfolioController extends Controller
         return $uploadUrls[$uploadId];
     }
 
-    private function portfolioUploadPaths(Portfolio $portfolio): array
+    private function portfolioUploadPaths(Portfolio $portfolio, ?iterable $sections = null): array
     {
         $directory = "users/{$portfolio->user_id}/templates/{$portfolio->template_id}/portfolios/{$portfolio->id}/";
         $paths = [];
 
-        foreach ($portfolio->sections()->with('fieldValues')->get() as $section) {
+        foreach ($sections ?? $portfolio->sections()->with('fieldValues')->get() as $section) {
             foreach ($section->fieldValues as $fieldValue) {
                 $this->collectPortfolioUploadPaths($fieldValue->value, $directory, $paths);
             }

@@ -9,8 +9,10 @@ use App\Models\PortfolioSection;
 use App\Models\Template;
 use App\Models\User;
 use App\Services\PortfolioService;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 use ZipArchive;
@@ -830,6 +832,42 @@ class PortfolioBuilderTest extends TestCase
             );
             Storage::disk('neon')->assertExists($path);
         }
+    }
+
+    public function test_portfolio_update_batches_field_value_database_queries()
+    {
+        $this->seed();
+        $user = User::factory()->create();
+        $template = Template::where('slug', 'emerald-minimalist')->firstOrFail();
+        $portfolio = app(PortfolioService::class)->createForUser($user, $template, 'Batch Update Test');
+        $section = $portfolio->sections()->where('section_key', 'header')->firstOrFail();
+        $fieldValues = FieldDefinition::all()->map(fn (FieldDefinition $field) => [
+            'field_definition_id' => $field->id,
+            'value' => match ($field->data_type) {
+                'email' => 'editor@example.test',
+                'url' => 'https://example.test',
+                'array' => [],
+                'boolean' => true,
+                default => 'Updated content',
+            },
+        ]);
+        $this->assertGreaterThan(30, $fieldValues->count());
+
+        $queryCount = 0;
+        DB::listen(function (QueryExecuted $query) use (&$queryCount) {
+            $queryCount++;
+        });
+
+        $this->actingAs($user)->patch(route('portfolios.update', $portfolio), [
+            'sections' => [[
+                'id' => $section->id,
+                'is_enabled' => true,
+                'field_values' => $fieldValues->all(),
+            ]],
+        ])->assertRedirect();
+
+        $this->assertLessThan(30, $queryCount);
+        $this->assertCount($fieldValues->count(), $section->fieldValues()->get());
     }
 
     public function test_removing_portfolio_image_clears_field_and_deletes_neon_object()
