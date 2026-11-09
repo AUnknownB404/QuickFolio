@@ -124,7 +124,7 @@ class PortfolioBuilderTest extends TestCase
         $this->assertSame('Sales & Invoice Management System', $projects->value[0]['title']);
     }
 
-    public function test_template_creation_logs_failure_context_without_suppressing_the_exception(): void
+    public function test_template_creation_returns_a_logged_server_error_when_creation_fails(): void
     {
         $user = User::factory()->create();
         $template = Template::create([
