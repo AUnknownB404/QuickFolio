@@ -40,5 +40,20 @@ return Application::configure(basePath: dirname(__DIR__))
         );
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        $exceptions->report(function (Throwable $exception): void {
+            $request = request();
+            $applicationFrame = collect($exception->getTrace())
+                ->first(fn (array $frame): bool => isset($frame['file'])
+                    && str_starts_with($frame['file'], app_path().DIRECTORY_SEPARATOR));
+
+            error_log('[QuickFolio] '.json_encode([
+                'request_id' => $request->header('x-vercel-id') ?? $request->header('x-request-id'),
+                'method' => $request->method(),
+                'path' => $request->path(),
+                'exception_class' => $exception::class,
+                'exception_code' => $exception->getCode(),
+                'application_file' => $applicationFrame['file'] ?? null,
+                'application_line' => $applicationFrame['line'] ?? null,
+            ], JSON_PARTIAL_OUTPUT_ON_ERROR | JSON_UNESCAPED_SLASHES));
+        });
     })->create();
