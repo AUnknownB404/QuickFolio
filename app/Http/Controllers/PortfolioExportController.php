@@ -689,10 +689,9 @@ class PortfolioExportController extends Controller
             }
             [$diskName, $path] = $assetLocation;
             $segments = explode('/', $path);
-            $isSharedDemoAsset = $diskName === 'neon'
-                && count($segments) >= 2
-                && $segments[0] === 'Demo'
-                && $segments[1] !== '';
+            if ($diskName === 'neon' && ($segments[0] ?? null) === 'Demo') {
+                return;
+            }
             $belongsToPortfolio = count($segments) >= 7
                 && $segments[0] === 'users'
                 && $segments[1] === (string) $portfolio->user_id
@@ -701,7 +700,7 @@ class PortfolioExportController extends Controller
                 && $segments[4] === 'portfolios'
                 && $segments[5] === (string) $portfolio->id
                 && $segments[6] !== '';
-            if (! $isSharedDemoAsset && ! $belongsToPortfolio) {
+            if (! $belongsToPortfolio) {
                 abort(422, 'A portfolio asset referenced by this export is outside this portfolio.');
             }
             $storageDisk = Storage::disk($diskName);

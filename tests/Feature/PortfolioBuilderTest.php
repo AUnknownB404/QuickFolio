@@ -974,7 +974,6 @@ class PortfolioBuilderTest extends TestCase
 
         $assetPath = "users/{$user->id}/templates/{$template->id}/portfolios/{$portfolio->id}/neon-profile.png";
         Storage::disk('neon')->put($assetPath, 'neon-profile-image');
-        Storage::disk('neon')->put('Demo/About.png', 'shared-demo-image');
         $header = $portfolio->sections()->where('section_key', 'header')->firstOrFail();
         $about = $portfolio->sections()->where('section_key', 'about')->firstOrFail();
         PortfolioFieldValue::updateOrCreate(
@@ -1002,11 +1001,10 @@ class PortfolioBuilderTest extends TestCase
         $this->assertTrue($archive->open($archivePath));
         try {
             $exportedImagePath = 'assets/'.substr(hash('sha256', $assetPath), 0, 12).'-neon-profile.png';
-            $exportedDemoImagePath = 'assets/'.substr(hash('sha256', 'Demo/About.png'), 0, 12).'-About.png';
             $this->assertStringContainsString($exportedImagePath, $archive->getFromName('index.html'));
             $this->assertSame('neon-profile-image', $archive->getFromName($exportedImagePath));
-            $this->assertStringContainsString($exportedDemoImagePath, $archive->getFromName('index.html'));
-            $this->assertSame('shared-demo-image', $archive->getFromName($exportedDemoImagePath));
+            $this->assertStringContainsString('https://images.example.test/Demo/About.png', $archive->getFromName('index.html'));
+            $this->assertFalse($archive->locateName('assets/'.substr(hash('sha256', 'Demo/About.png'), 0, 12).'-About.png'));
         } finally {
             $archive->close();
             unlink($archivePath);
