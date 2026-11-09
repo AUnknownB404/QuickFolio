@@ -139,6 +139,10 @@ class PortfolioController extends Controller
     {
         $this->authorize('update', $portfolio);
 
+        $connectionName = DB::getDefaultConnection() === 'pgsql'
+            ? 'pgsql_unpooled'
+            : DB::getDefaultConnection();
+        $portfolio->setConnection($connectionName);
         $portfolioSections = $portfolio->sections()->with('fieldValues')->get()->keyBy('id');
         $previousUploadPaths = $this->portfolioUploadPaths($portfolio, $portfolioSections);
 
@@ -197,7 +201,7 @@ class PortfolioController extends Controller
             ->values();
         $fieldDefinitions = $fieldDefinitionIds->isEmpty()
             ? collect()
-            : FieldDefinition::whereIn('id', $fieldDefinitionIds)->get()->keyBy('id');
+            : FieldDefinition::on($connectionName)->whereIn('id', $fieldDefinitionIds)->get()->keyBy('id');
 
         foreach ($validated['sections'] as $sectionIndex => $sectionData) {
             if (! $portfolioSections->has((int) $sectionData['id'])) {
@@ -284,7 +288,7 @@ class PortfolioController extends Controller
                 ]);
             }
 
-            DB::transaction(function () use ($portfolio, $portfolioSections, $fieldDefinitions, $validated) {
+            DB::connection($connectionName)->transaction(function () use ($connectionName, $portfolio, $portfolioSections, $fieldDefinitions, $validated) {
                 $portfolio->update([
                     'google_form_url' => GoogleFormIntegration::formUrl($validated['google_form_url'] ?? null),
                     'google_form_name_entry' => $validated['google_form_name_entry'] ?? null,
@@ -325,7 +329,7 @@ class PortfolioController extends Controller
                 }
 
                 if ($fieldValueRows !== []) {
-                    DB::table('portfolio_field_values')->upsert(
+                    DB::connection($connectionName)->table('portfolio_field_values')->upsert(
                         array_values($fieldValueRows),
                         ['portfolio_section_id', 'field_definition_id'],
                         ['value', 'updated_at']
