@@ -11,6 +11,7 @@ use App\Services\TemplateDemoData;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
@@ -49,13 +50,30 @@ class PortfolioController extends Controller
             'title' => ['required', 'string', 'max:255'],
         ]);
 
-        $templateDemo = $demoData->forTemplate($template);
-        $portfolio = $this->portfolioService->createForUser(
-            $request->user(),
-            $template,
-            $validated['title'],
-            $templateDemo['content']
-        );
+        try {
+            $templateDemo = $demoData->forTemplate($template);
+            $portfolio = $this->portfolioService->createForUser(
+                $request->user(),
+                $template,
+                $validated['title'],
+                $templateDemo['content']
+            );
+        } catch (Throwable $exception) {
+            $applicationFrame = collect($exception->getTrace())
+                ->first(fn (array $frame): bool => isset($frame['file'])
+                    && str_starts_with($frame['file'], app_path().DIRECTORY_SEPARATOR));
+
+            Log::error('Portfolio creation failed.', [
+                'request_id' => $request->header('x-vercel-id') ?? $request->header('x-request-id'),
+                'template_slug' => $template->slug,
+                'exception_class' => $exception::class,
+                'exception_code' => $exception->getCode(),
+                'application_file' => $applicationFrame['file'] ?? null,
+                'application_line' => $applicationFrame['line'] ?? null,
+            ]);
+
+            throw $exception;
+        }
 
         return redirect()->route('portfolios.edit', $portfolio)->with('portfolio_created', true);
     }

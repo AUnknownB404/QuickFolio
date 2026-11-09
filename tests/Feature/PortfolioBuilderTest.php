@@ -13,6 +13,7 @@ use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 use ZipArchive;
@@ -121,6 +122,35 @@ class PortfolioBuilderTest extends TestCase
         $this->assertNotNull($projects);
         $this->assertSame('Akash Hossen', $heroName->value);
         $this->assertSame('Sales & Invoice Management System', $projects->value[0]['title']);
+    }
+
+    public function test_template_creation_logs_failure_context_without_suppressing_the_exception(): void
+    {
+        $user = User::factory()->create();
+        $template = Template::create([
+            'name' => 'Failure Template',
+            'slug' => 'failure-template',
+            'is_published' => true,
+        ]);
+        $service = \Mockery::mock(PortfolioService::class);
+        $service->shouldReceive('createForUser')
+            ->once()
+            ->andThrow(new \RuntimeException('Creation failed.'));
+        $this->app->instance(PortfolioService::class, $service);
+        Log::spy();
+
+        $this->actingAs($user)
+            ->post(route('templates.use', $template->slug), ['title' => 'Failure Portfolio'])
+            ->assertServerError();
+
+        Log::shouldHaveReceived('error')
+            ->with('Portfolio creation failed.', \Mockery::on(fn (array $context): bool => (
+                $context['template_slug'] === $template->slug
+                && $context['exception_class'] === \RuntimeException::class
+                && isset($context['exception_code'])
+                && array_key_exists('application_file', $context)
+                && array_key_exists('application_line', $context)
+            )));
     }
 
     public function test_new_portfolios_include_a_services_section_in_the_editor(): void
