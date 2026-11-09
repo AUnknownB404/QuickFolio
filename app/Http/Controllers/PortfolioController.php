@@ -63,16 +63,21 @@ class PortfolioController extends Controller
                 ->first(fn (array $frame): bool => isset($frame['file'])
                     && str_starts_with($frame['file'], app_path().DIRECTORY_SEPARATOR));
 
-            Log::error('Portfolio creation failed.', [
+            $diagnosticContext = [
                 'request_id' => $request->header('x-vercel-id') ?? $request->header('x-request-id'),
                 'template_slug' => $template->slug,
                 'exception_class' => $exception::class,
                 'exception_code' => $exception->getCode(),
                 'application_file' => $applicationFrame['file'] ?? null,
                 'application_line' => $applicationFrame['line'] ?? null,
-            ]);
+            ];
+            Log::error('Portfolio creation failed.', $diagnosticContext);
+            error_log('[QuickFolio] '.json_encode(
+                $diagnosticContext,
+                JSON_PARTIAL_OUTPUT_ON_ERROR | JSON_UNESCAPED_SLASHES,
+            ));
 
-            throw $exception;
+            return response()->view('errors.500', [], 500);
         }
 
         return redirect()->route('portfolios.edit', $portfolio)->with('portfolio_created', true);
