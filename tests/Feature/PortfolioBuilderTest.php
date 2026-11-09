@@ -974,13 +974,22 @@ class PortfolioBuilderTest extends TestCase
 
         $assetPath = "users/{$user->id}/templates/{$template->id}/portfolios/{$portfolio->id}/neon-profile.png";
         Storage::disk('neon')->put($assetPath, 'neon-profile-image');
+        Storage::disk('neon')->put('Demo/About.png', 'shared-demo-image');
         $header = $portfolio->sections()->where('section_key', 'header')->firstOrFail();
+        $about = $portfolio->sections()->where('section_key', 'about')->firstOrFail();
         PortfolioFieldValue::updateOrCreate(
             [
                 'portfolio_section_id' => $header->id,
                 'field_definition_id' => FieldDefinition::where('field_key', 'hero_image')->firstOrFail()->id,
             ],
             ['value' => "https://images.example.test/{$assetPath}"]
+        );
+        PortfolioFieldValue::updateOrCreate(
+            [
+                'portfolio_section_id' => $about->id,
+                'field_definition_id' => FieldDefinition::where('field_key', 'about_image')->firstOrFail()->id,
+            ],
+            ['value' => 'https://images.example.test/Demo/About.png']
         );
 
         $response = $this->actingAs($user)->get(route('portfolios.download', $portfolio));
@@ -993,12 +1002,25 @@ class PortfolioBuilderTest extends TestCase
         $this->assertTrue($archive->open($archivePath));
         try {
             $exportedImagePath = 'assets/'.substr(hash('sha256', $assetPath), 0, 12).'-neon-profile.png';
+            $exportedDemoImagePath = 'assets/'.substr(hash('sha256', 'Demo/About.png'), 0, 12).'-About.png';
             $this->assertStringContainsString($exportedImagePath, $archive->getFromName('index.html'));
             $this->assertSame('neon-profile-image', $archive->getFromName($exportedImagePath));
+            $this->assertStringContainsString($exportedDemoImagePath, $archive->getFromName('index.html'));
+            $this->assertSame('shared-demo-image', $archive->getFromName($exportedDemoImagePath));
         } finally {
             $archive->close();
             unlink($archivePath);
         }
+
+        PortfolioFieldValue::updateOrCreate(
+            [
+                'portfolio_section_id' => $about->id,
+                'field_definition_id' => FieldDefinition::where('field_key', 'about_image')->firstOrFail()->id,
+            ],
+            ['value' => "https://images.example.test/users/{$user->id}/templates/{$template->id}/portfolios/99999999/other.png"]
+        );
+
+        $this->actingAs($user)->get(route('portfolios.download', $portfolio))->assertUnprocessable();
     }
 
     public function test_portfolio_download_contains_template_files_and_local_assets()
