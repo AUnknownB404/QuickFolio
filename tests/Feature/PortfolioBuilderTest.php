@@ -148,6 +148,11 @@ class PortfolioBuilderTest extends TestCase
                 $context['template_slug'] === $template->slug
                 && $context['exception_class'] === \RuntimeException::class
                 && isset($context['exception_code'])
+                && array_key_exists('exception_sql', $context)
+                && array_key_exists('previous_exception_class', $context)
+                && array_key_exists('previous_sql_state', $context)
+                && array_key_exists('initial_transaction_level', $context)
+                && array_key_exists('initial_pdo_transaction', $context)
                 && array_key_exists('application_file', $context)
                 && array_key_exists('application_line', $context)
             )));

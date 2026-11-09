@@ -8,6 +8,7 @@ use App\Models\Template;
 use App\Services\GoogleFormIntegration;
 use App\Services\PortfolioService;
 use App\Services\TemplateDemoData;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -50,6 +51,10 @@ class PortfolioController extends Controller
             'title' => ['required', 'string', 'max:255'],
         ]);
 
+        $connection = DB::connection();
+        $initialTransactionLevel = $connection->transactionLevel();
+        $initialPdoTransaction = $connection->getPdo()->inTransaction();
+
         try {
             $templateDemo = $demoData->forTemplate($template);
             $portfolio = $this->portfolioService->createForUser(
@@ -59,6 +64,7 @@ class PortfolioController extends Controller
                 $templateDemo['content']
             );
         } catch (Throwable $exception) {
+            $previousException = $exception->getPrevious();
             $applicationFrame = collect($exception->getTrace())
                 ->first(fn (array $frame): bool => isset($frame['file'])
                     && str_starts_with($frame['file'], app_path().DIRECTORY_SEPARATOR));
@@ -68,6 +74,14 @@ class PortfolioController extends Controller
                 'template_slug' => $template->slug,
                 'exception_class' => $exception::class,
                 'exception_code' => $exception->getCode(),
+                'exception_sql' => $exception instanceof QueryException ? $exception->getSql() : null,
+                'previous_exception_class' => $previousException ? $previousException::class : null,
+                'previous_exception_code' => $previousException?->getCode(),
+                'previous_sql_state' => $previousException instanceof \PDOException
+                    ? ($previousException->errorInfo[0] ?? null)
+                    : null,
+                'initial_transaction_level' => $initialTransactionLevel,
+                'initial_pdo_transaction' => $initialPdoTransaction,
                 'application_file' => $applicationFrame['file'] ?? null,
                 'application_line' => $applicationFrame['line'] ?? null,
             ];
