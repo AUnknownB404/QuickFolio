@@ -46,8 +46,7 @@ class PortfolioService
 
             // Initialize portfolio sections from template sections
             foreach ($template->sections as $templateSection) {
-                PortfolioSection::create([
-                    'portfolio_id' => $portfolio->id,
+                $portfolio->sections()->create([
                     'section_key' => $templateSection->section_key,
                     'is_enabled' => $templateSection->is_enabled,
                     'display_order' => $templateSection->display_order,
@@ -68,7 +67,7 @@ class PortfolioService
                     $fieldDefinition = $fieldDefinitions->get($fieldKey);
 
                     if ($fieldDefinition && $value !== null) {
-                        PortfolioFieldValue::create([
+                        PortfolioFieldValue::on($connectionName)->create([
                             'portfolio_section_id' => $portfolioSection->id,
                             'field_definition_id' => $fieldDefinition->id,
                             'value' => $value,
@@ -113,8 +112,7 @@ class PortfolioService
             return;
         }
 
-        PortfolioSection::create([
-            'portfolio_id' => $portfolio->id,
+        $portfolio->sections()->create([
             'section_key' => 'services',
             'is_enabled' => true,
             'display_order' => ((int) $portfolio->sections()->max('display_order')) + 1,
